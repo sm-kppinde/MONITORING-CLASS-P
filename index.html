@@ -594,8 +594,8 @@ let page = 1;
 let PAGE_SIZE = 50;
 
 // ====== SUPABASE INTEGRATION (hardcoded — isi 2 nilai di bawah ini) ======
-const SUPABASE_URL = 'https://whaklsqwcyafthipoazc.supabase.co';   // sudah diisi sesuai project Anda
-const SUPABASE_KEY  = 'eyJhbGciOi...';                       // <-- WAJIB diganti dengan anon public key dari Supabase Dashboard > Settings > API
+const SUPABASE_URL = 'https://xxxxxxxxxxxx.supabase.co';   // <-- ganti dengan Project URL Supabase Anda
+const SUPABASE_KEY  = 'eyJhbGciOi...';                       // <-- ganti dengan anon public key Supabase Anda
 let dbConnected = false;
 
 // ====== ADMIN LOGIN (password sederhana, hash SHA-256 disimpan, bukan plain text) ======
@@ -898,6 +898,9 @@ function updateKPI() {
   });
 
   const sumAmt = arr => arr.reduce((s,r) => s + (r['AMOUNT OWN STOK']||0), 0);
+  // Amount khusus Incoming: (MIT + DUES IN) x ISSUE PRICE, karena AMOUNT OWN STOK
+  // biasanya 0 untuk item incoming (SOH masih 0, belum jadi stok fisik)
+  const sumIncomingAmt = arr => arr.reduce((s,r) => s + (((r['MIT']||0) + (r['DUES IN']||0)) * (r['ISSUE PRICE']||0)), 0);
 
   document.getElementById('kpiPartial').textContent  = partial.length.toLocaleString('id-ID');
   document.getElementById('kpiFull').textContent     = full.length.toLocaleString('id-ID');
@@ -913,7 +916,7 @@ function updateKPI() {
   const el = document.getElementById('kpiIncoming');
   if (el) el.textContent = incoming.length.toLocaleString('id-ID');
   const elAmt = document.getElementById('kpiIncomingAmt');
-  if (elAmt) elAmt.textContent = fmtRp(sumAmt(incoming));
+  if (elAmt) elAmt.textContent = fmtRp(sumIncomingAmt(incoming));
 }
 
 function updateSummaryStrip() {
@@ -1105,6 +1108,10 @@ function renderTable() {
     const { status, badge, cls } = getStatus(r);
     const rowNum = start + i + 1;
     const binLoc = r['BIN LOC'] || '—';
+    const isIncomingRow = (r['TOTAL SOH']||0)===0 && (((r['MIT']||0)+(r['DUES IN']||0))>0);
+    const displayAmount = isIncomingRow
+      ? ((r['MIT']||0) + (r['DUES IN']||0)) * (r['ISSUE PRICE']||0)
+      : (r['AMOUNT OWN STOK']||0);
     return `<tr class="${cls}" onclick="openModal(${JSON.stringify(r).replace(/"/g,'&quot;')})">
       <td class="row-num">${rowNum}</td>
       <td class="stock-code">${r['STOCK CODE']}</td>
@@ -1117,7 +1124,7 @@ function renderTable() {
       <td class="num" style="color:${(r['DUES OUT']||0)>0?'#F2A33C':'#64748b'}">${fmtQty(r['DUES OUT'])}</td>
       <td class="num" style="color:${(r['DUES IN']||0)>0?'#22c55e':'#64748b'}">${fmtQty(r['DUES IN']||0)}</td>
       <td class="num">Rp ${fmtRpFull(r['ISSUE PRICE'])}</td>
-      <td class="amount">Rp ${fmtRpFull(r['AMOUNT OWN STOK'])}</td>
+      <td class="amount">Rp ${fmtRpFull(displayAmount)}${isIncomingRow?' <span style="color:#a855f7;font-size:9px">(incoming)</span>':''}</td>
       <td style="color:#64748b;font-size:11px">${r['UOI']}</td>
       <td><span class="badge ${badge}">${status}</span></td>
     </tr>`;
