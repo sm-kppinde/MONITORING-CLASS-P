@@ -28,12 +28,33 @@
     --radius: 10px;
     --font: 'Segoe UI', system-ui, sans-serif;
   }
+  [data-theme="light"] {
+    --bg: #f4f6fb;
+    --bg2: #ffffff;
+    --bg3: #eef1f7;
+    --border: #dbe1ec;
+    --amber: #d9861a;
+    --amber-dim: #b56f12;
+    --amber-glow: rgba(217,134,26,0.10);
+    --green: #16a34a;
+    --green-dim: rgba(22,163,74,0.12);
+    --red: #dc2626;
+    --red-dim: rgba(220,38,38,0.12);
+    --blue: #2563eb;
+    --blue-dim: rgba(37,99,235,0.12);
+    --purple: #9333ea;
+    --purple-dim: rgba(147,51,234,0.12);
+    --text: #1e293b;
+    --text-muted: #94a3b8;
+    --text-dim: #475569;
+    --header-grad: linear-gradient(135deg, #ffffff 0%, #eef1f7 100%);
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; transition: background 0.2s, color 0.2s; }
 
   /* Header */
   .header {
-    background: linear-gradient(135deg, #0f1e38 0%, #162033 100%);
+    background: var(--header-grad, linear-gradient(135deg, #0f1e38 0%, #162033 100%));
     border-bottom: 2px solid var(--amber);
     padding: 16px 28px;
     display: flex; align-items: center; gap: 18px;
@@ -54,6 +75,13 @@
   }
   .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
   .update-date { font-size: 11px; color: var(--text-muted); }
+  .theme-toggle {
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+    width: 32px; height: 32px; border-radius: 8px; cursor: pointer;
+    font-size: 15px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .theme-toggle:hover { border-color: var(--amber); transform: scale(1.05); }
 
   /* Upload Banner */
   .upload-banner {
@@ -280,6 +308,7 @@
   tbody tr.row-full { border-left: 3px solid var(--green); }
   tbody tr.row-ro { border-left: 3px solid var(--blue); }
   tbody tr.row-kurang { border-left: 3px solid var(--red); }
+  tbody tr.row-incoming { border-left: 3px solid var(--purple); }
   tbody td { padding: 8px 10px; vertical-align: middle; }
   td.stock-code { font-family: 'Courier New', monospace; font-weight: 700; color: var(--amber); font-size: 11px; }
   td.item-name { font-weight: 600; color: var(--text); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -295,6 +324,7 @@
   .badge-red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
   .badge-blue { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(59,130,246,0.3); }
   .badge-amber { background: var(--amber-glow); color: var(--amber); border: 1px solid rgba(242,163,60,0.3); }
+  .badge-purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(168,85,247,0.3); }
 
   /* Row number */
   .row-num { color: var(--text-muted); font-size: 10px; text-align: right; width: 30px; }
@@ -387,6 +417,7 @@
     <div class="header-sub">Stock On Hand · MIT · Dues In · Dues Out · MEGA</div>
   </div>
   <div class="header-right">
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Ganti tampilan terang/gelap">🌙</button>
     <div class="header-badge">✓ Siap Posting</div>
     <div class="update-date" id="updateDateLabel">Data: 29 Jun 2026</div>
   </div>
@@ -475,7 +506,7 @@
     <div class="chart-title">📊 Distribusi Status</div>
     <div class="donut-wrap">
       <svg class="donut-svg" viewBox="0 0 100 100" id="donutChart">
-        <circle cx="50" cy="50" r="35" fill="none" stroke="#1e3050" stroke-width="18"/>
+        <circle cx="50" cy="50" r="35" fill="none" stroke="var(--border)" stroke-width="18"/>
       </svg>
       <div class="donut-legend" id="donutLegend"></div>
     </div>
@@ -527,6 +558,7 @@
         <tr>
           <th class="row-num">#</th>
           <th onclick="sortTable('STOCK CODE')">Stock Code <span class="sort-icon"></span></th>
+          <th onclick="sortTable('MNEMONIC')">Mnemonic <span class="sort-icon"></span></th>
           <th onclick="sortTable('ITEM NAME')">Item Name <span class="sort-icon"></span></th>
           <th onclick="sortTable('DESCRIPTION')">Description <span class="sort-icon"></span></th>
           <th onclick="sortTable('BIN LOC')">Bin Loc <span class="sort-icon"></span></th>
@@ -729,6 +761,7 @@ async function loadFromDb() {
         'WAREHOUSE': r.warehouse || 'MEGA',
         'CLASS': r.class || 'P',
         'STOCK CODE': r.stock_code,
+        'MNEMONIC': r.mnemonic || '',
         'ITEM NAME': r.item_name || '',
         'DESCRIPTION': r.description || '',
         'GROUP CLASS': r.group_class || '0000',
@@ -782,6 +815,7 @@ async function saveToDb(rows, filename) {
       warehouse: r['WAREHOUSE'] || 'MEGA',
       class: r['CLASS'] || 'P',
       stock_code: String(r['STOCK CODE']),
+      mnemonic: r['MNEMONIC'] || '',
       item_name: r['ITEM NAME'] || '',
       description: r['DESCRIPTION'] || '',
       group_class: String(r['GROUP CLASS'] || '0000'),
@@ -824,7 +858,20 @@ async function saveToDb(rows, filename) {
 }
 
 // ====== INIT ======
+// ====== THEME TOGGLE ======
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('themeToggle').textContent = theme === 'light' ? '☀️' : '🌙';
+  localStorage.setItem('mcp_theme', theme);
+}
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  applyTheme(current === 'light' ? 'dark' : 'light');
+  renderCharts(); // re-render agar warna chart/donut menyesuaikan tema baru
+}
+
 function init() {
+  applyTheme(localStorage.getItem('mcp_theme') || 'dark');
   applyRoleUI();
   buildGroupFilter();
   updateKPI();
@@ -1117,6 +1164,7 @@ function renderTable() {
     return `<tr class="${cls}" onclick="openModal(${JSON.stringify(r).replace(/"/g,'&quot;')})">
       <td class="row-num">${rowNum}</td>
       <td class="stock-code">${r['STOCK CODE']}</td>
+      <td style="color:var(--text-dim);font-size:11px">${r['MNEMONIC']||'—'}</td>
       <td class="item-name" title="${r['ITEM NAME']}">${r['ITEM NAME']}</td>
       <td class="desc" title="${r['DESCRIPTION']}">${r['DESCRIPTION']}</td>
       <td class="bin-loc">${binLoc}</td>
@@ -1216,6 +1264,7 @@ function openModal(r) {
     <div class="mg-item full-width"><div class="mg-label">Description</div><div class="mg-value" style="font-size:12px;color:var(--text-dim)">${r['DESCRIPTION']||'—'}</div></div>
     <div class="mg-item"><div class="mg-label">Status</div><div class="mg-value"><span class="badge ${badge}" style="font-size:12px">${status}</span></div></div>
     <div class="mg-item"><div class="mg-label">Class</div><div class="mg-value">${r['CLASS']||'P'}</div></div>
+    <div class="mg-item"><div class="mg-label">Mnemonic</div><div class="mg-value">${r['MNEMONIC']||'—'}</div></div>
     <div class="mg-item"><div class="mg-label">Bin Location</div><div class="mg-value" style="color:var(--purple)">${r['BIN LOC']||'—'}</div></div>
     <div class="mg-item"><div class="mg-label">UOI</div><div class="mg-value">${r['UOI']||'—'}</div></div>
     <div class="mg-item"><div class="mg-label">Total SOH</div><div class="mg-value" style="color:var(--text)">${fmtQty(r['TOTAL SOH'])}</div></div>
@@ -1280,6 +1329,7 @@ function processFile(file) {
       allData = classP.map(r => ({
         'WAREHOUSE': r['WAREHOUSE']||'MEGA',
         'STOCK CODE': (r['STOCK CODE']||r['Stock Code']||'').toString(),
+        'MNEMONIC': (r['MNEMONIC']||r['Mnemonic']||'').toString(),
         'ITEM NAME': r['ITEM NAME']||r['Item Name']||'',
         'DESCRIPTION': r['DESCRIPTION']||r['Description']||'',
         'CLASS': (r['CLASS']||r['Class']||'P').toString().trim().toUpperCase(),
@@ -1329,6 +1379,7 @@ function exportExcel() {
     return {
       'No': i+1,
       'Stock Code': r['STOCK CODE'],
+      'Mnemonic': r['MNEMONIC'],
       'Item Name': r['ITEM NAME'],
       'Description': r['DESCRIPTION'],
       'Bin Loc': r['BIN LOC']||'',
