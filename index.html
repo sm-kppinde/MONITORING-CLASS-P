@@ -291,7 +291,7 @@
   table.snapshot-table th:first-child, table.snapshot-table td:first-child { text-align: left; }
   table.snapshot-table th { color: var(--text-muted); font-weight: 600; font-size: 11px; }
   table.snapshot-table td { color: var(--text); }
-  .table-wrap { overflow-x: auto; max-height: 400px; overflow-y: auto; }
+  .snapshot-table-wrap { overflow-x: auto; max-height: 400px; overflow-y: auto; }
 
   .chart-row {
     display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
@@ -823,7 +823,7 @@
 
     <div class="chart-section">
       <h3>🗂 Data Riwayat Harian</h3>
-      <div class="table-wrap">
+      <div class="snapshot-table-wrap">
         <table class="snapshot-table" id="snapshotTable">
           <thead>
             <tr>
@@ -862,6 +862,27 @@
   <div class="toolbar" style="margin:16px 28px 0">
     <input type="text" class="search-box" id="wrSearchBox" placeholder="🔍 Cari WR No, Stock Code, Equip No, Item Name..." oninput="applyWrFilters()">
     <button class="btn-export" onclick="exportWrExcel()">⬇ Export Excel</button>
+  </div>
+
+  <div class="kpi-row" id="wrSummaryStrip" style="grid-template-columns:repeat(3,1fr);margin:16px 28px 0">
+    <div class="kpi-card green">
+      <div class="kpi-label">✅ Ready Posting</div>
+      <div class="kpi-value" id="wrScReadyCount">—</div>
+      <div class="kpi-sub">Stok cukup untuk memenuhi WR (FIFO berdasarkan tanggal)</div>
+      <div class="kpi-amount" id="wrScReadyAmt">—</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">⚠ Not Ready Posting (SOH WH &gt; 0)</div>
+      <div class="kpi-value" id="wrScNotReadySohCount">—</div>
+      <div class="kpi-sub">Ada stok fisik, tapi sudah terpakai WR lain yang lebih lama</div>
+      <div class="kpi-amount" id="wrScNotReadySohAmt">—</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">🚫 Not Ready Posting (SOH = 0)</div>
+      <div class="kpi-value" id="wrScNotReadyZeroCount">—</div>
+      <div class="kpi-sub">Stok fisik memang tidak ada sama sekali</div>
+      <div class="kpi-amount" id="wrScNotReadyZeroAmt">—</div>
+    </div>
   </div>
 
   <div class="table-wrap">
@@ -1188,7 +1209,7 @@ function toIsoDate(d) {
 function formatDateDDMMYY(isoOrRaw) {
   const d = parseDateFlexible(isoOrRaw);
   if (!d) return '—';
-  return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${pad2(d.getFullYear()%100)}`;
+  return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}`;
 }
 function getDateTs(isoOrRaw) {
   const d = parseDateFlexible(isoOrRaw);
@@ -2376,7 +2397,7 @@ function renderSnapshotTable() {
 // ====== WR DETAIL PAGE ======
 let wrFiltered = [...wrData];
 let wrPage = 1;
-const WR_PAGE_SIZE = 50;
+let WR_PAGE_SIZE = 50;
 let wrSortKey = null;
 let wrSortDir = 1;
 
@@ -2429,7 +2450,31 @@ function applyWrFilters() {
   wrPage = 1;
   const cntEl = document.getElementById('wrRecordCount');
   if (cntEl) cntEl.textContent = `${wrData.length.toLocaleString('id-ID')} record`;
+  updateWrSummary(data);
   renderWrTable();
+}
+
+function updateWrSummary(data) {
+  const readyRows = data.filter(r => r['REMARK'] === 'Ready Posting');
+  const notReadySohRows = data.filter(r => r['REMARK'] === 'Not Ready Posting' && (r['SOH WH']||0) > 0);
+  const notReadyZeroRows = data.filter(r => r['REMARK'] === 'Not Ready Posting' && (r['SOH WH']||0) === 0);
+
+  const readyAmt = readyRows.reduce((s,r) => s + (r['AMOUNT PRICE']||0), 0);
+  const notReadySohAmt = notReadySohRows.reduce((s,r) => s + (r['AMOUNT PRICE']||0), 0);
+  const notReadyZeroAmt = notReadyZeroRows.reduce((s,r) => s + (r['AMOUNT PRICE']||0), 0);
+
+  const elCount = document.getElementById('wrScReadyCount');
+  const elAmt = document.getElementById('wrScReadyAmt');
+  const elNrCount = document.getElementById('wrScNotReadySohCount');
+  const elNrAmt = document.getElementById('wrScNotReadySohAmt');
+  const elNzCount = document.getElementById('wrScNotReadyZeroCount');
+  const elNzAmt = document.getElementById('wrScNotReadyZeroAmt');
+  if (elCount) elCount.textContent = readyRows.length.toLocaleString('id-ID') + ' item';
+  if (elAmt) elAmt.textContent = fmtRp(readyAmt);
+  if (elNrCount) elNrCount.textContent = notReadySohRows.length.toLocaleString('id-ID') + ' item';
+  if (elNrAmt) elNrAmt.textContent = fmtRp(notReadySohAmt);
+  if (elNzCount) elNzCount.textContent = notReadyZeroRows.length.toLocaleString('id-ID') + ' item';
+  if (elNzAmt) elNzAmt.textContent = fmtRp(notReadyZeroAmt);
 }
 
 function sortWrTable(key) {
@@ -2482,10 +2527,22 @@ function renderWrTable() {
   }
 
   const pag = document.getElementById('wrPagination');
-  let pagHtml = `<button class="page-btn" onclick="wrGoToPage(${wrPage-1})" ${wrPage<=1?'disabled':''}>‹ Prev</button>`;
+  let pagHtml = `<select class="page-size-sel" onchange="changeWrPageSize(this.value)">
+    <option value="25" ${WR_PAGE_SIZE===25?'selected':''}>25/hal</option>
+    <option value="50" ${WR_PAGE_SIZE===50?'selected':''}>50/hal</option>
+    <option value="100" ${WR_PAGE_SIZE===100?'selected':''}>100/hal</option>
+    <option value="9999" ${WR_PAGE_SIZE===9999?'selected':''}>Semua</option>
+  </select>`;
+  pagHtml += `<button class="page-btn" onclick="wrGoToPage(${wrPage-1})" ${wrPage<=1?'disabled':''}>‹ Prev</button>`;
   pagHtml += `<span style="padding:0 12px;color:var(--text-dim);font-size:12px">Halaman ${wrPage} dari ${totalPages} (${wrFiltered.length.toLocaleString('id-ID')} item)</span>`;
   pagHtml += `<button class="page-btn" onclick="wrGoToPage(${wrPage+1})" ${wrPage>=totalPages?'disabled':''}>Next ›</button>`;
   pag.innerHTML = pagHtml;
+}
+
+function changeWrPageSize(v) {
+  WR_PAGE_SIZE = parseInt(v);
+  wrPage = 1;
+  renderWrTable();
 }
 
 function wrGoToPage(p) {
