@@ -564,6 +564,8 @@
   .badge-teal { background: var(--cyan-dim); color: var(--cyan); border: 1px solid rgba(6,182,212,0.3); }
 
   .remark-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; padding: 3px 10px; border-radius: 10px; white-space: nowrap; }
+  .remark-tag.clickable { cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+  .remark-tag.clickable:hover { transform: translateY(-1px) scale(1.04); box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
   .remark-tag::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
   .remark-ready   { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
   .remark-partial { background: var(--amber-glow); color: var(--amber); border: 1px solid rgba(242,163,60,0.3); }
@@ -1093,21 +1095,21 @@
   </div>
 
   <div class="kpi-row" id="wrSummaryStrip" style="grid-template-columns:repeat(3,1fr);margin:16px 28px 0">
-    <div class="kpi-card green">
+    <div class="kpi-card green" id="wrCardReady" onclick="quickFilterWrRemark('ready')" title="Klik untuk filter">
       <div class="kpi-icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 5-5"/></svg></div>
       <div class="kpi-label">Ready Posting</div>
       <div class="kpi-value" id="wrScReadyCount">—</div>
       <div class="kpi-sub">Stok cukup untuk memenuhi WR (FIFO berdasarkan tanggal)</div>
       <div class="kpi-amount" id="wrScReadyAmt">—</div>
     </div>
-    <div class="kpi-card red">
+    <div class="kpi-card red" id="wrCardNotReadySoh" onclick="quickFilterWrRemark('not_ready_soh')" title="Klik untuk filter">
       <div class="kpi-icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L2 20h20L12 3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/></svg></div>
       <div class="kpi-label">Not Ready Posting (SOH WH &gt; 0)</div>
       <div class="kpi-value" id="wrScNotReadySohCount">—</div>
       <div class="kpi-sub">Ada stok fisik, tapi sudah terpakai WR lain yang lebih lama</div>
       <div class="kpi-amount" id="wrScNotReadySohAmt">—</div>
     </div>
-    <div class="kpi-card purple">
+    <div class="kpi-card purple" id="wrCardNotReadyZero" onclick="quickFilterWrRemark('not_ready_zero')" title="Klik untuk filter">
       <div class="kpi-icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 8l8 8M16 8l-8 8"/></svg></div>
       <div class="kpi-label">Not Ready Posting (SOH = 0)</div>
       <div class="kpi-value" id="wrScNotReadyZeroCount">—</div>
@@ -1115,6 +1117,7 @@
       <div class="kpi-amount" id="wrScNotReadyZeroAmt">—</div>
     </div>
   </div>
+  <div style="margin:8px 28px 0;display:flex;align-items:center;gap:8px" id="wrFilterActiveBar"></div>
 
   <div class="chart-section" id="wrTrendSection" style="margin:16px 28px 0;display:none">
     <h3><svg class="section-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8a1 1 0 0 1 1 1v16l-4-2-4 2-4-2V4a1 1 0 0 1 1-1z"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4"/></svg>Trend Amount WR Detail (3 Kategori)</h3>
@@ -1142,7 +1145,7 @@
             <th onclick="sortWrTable('PRICE')" style="text-align:right">Price <span class="sort-icon"></span></th>
             <th onclick="sortWrTable('AMOUNT PRICE')" style="text-align:right">Amount Price <span class="sort-icon"></span></th>
             <th onclick="sortWrTable('SOH WH')" style="text-align:right">SOH WH <span class="sort-icon"></span></th>
-            <th>Remark</th>
+            <th onclick="sortWrTable('REMARK')">Remark <span class="sort-icon"></span></th>
           </tr>
         </thead>
         <tbody id="wrTableBody"></tbody>
@@ -2834,6 +2837,42 @@ let wrPage = 1;
 let WR_PAGE_SIZE = 50;
 let wrSortKey = null;
 let wrSortDir = 1;
+let wrRemarkFilter = 'all'; // 'all' | 'ready' | 'not_ready_soh' | 'not_ready_zero'
+
+function quickFilterWrRemark(type) {
+  wrRemarkFilter = (wrRemarkFilter === type) ? 'all' : type;
+  updateWrCardActiveState();
+  applyWrFilters();
+  document.getElementById('wrTable').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function updateWrCardActiveState() {
+  const map = { ready: 'wrCardReady', not_ready_soh: 'wrCardNotReadySoh', not_ready_zero: 'wrCardNotReadyZero' };
+  Object.keys(map).forEach(key => {
+    const el = document.getElementById(map[key]);
+    if (el) el.classList.toggle('active-filter', wrRemarkFilter === key);
+  });
+}
+
+function renderWrFilterBar() {
+  const bar = document.getElementById('wrFilterActiveBar');
+  if (!bar) return;
+  const labels = {
+    ready: { text: 'Ready Posting', cls: 'remark-ready' },
+    not_ready_soh: { text: 'Not Ready Posting (SOH WH > 0)', cls: 'remark-notready' },
+    not_ready_zero: { text: 'Not Ready Posting (SOH = 0)', cls: 'remark-notready' },
+  };
+  if (wrRemarkFilter === 'all' || !labels[wrRemarkFilter]) {
+    bar.innerHTML = '';
+    return;
+  }
+  const l = labels[wrRemarkFilter];
+  bar.innerHTML = `
+    <span style="font-size:11.5px;color:var(--text-muted)">Filter aktif:</span>
+    <span class="remark-tag ${l.cls}">${l.text}</span>
+    <button onclick="quickFilterWrRemark('${wrRemarkFilter}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:999px;padding:2px 9px;font-size:11px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">✕ Hapus filter</button>
+  `;
+}
 
 function setWrDbStatus(state, text) {
   const dot = document.getElementById('wrDbStatusDot');
@@ -2868,6 +2907,16 @@ function applyWrFilters() {
       String(r['PN CURRENT']||'').toLowerCase().includes(q)
     );
   }
+  updateWrSummary(data);
+
+  if (wrRemarkFilter === 'ready') {
+    data = data.filter(r => r['REMARK'] === 'Ready Posting');
+  } else if (wrRemarkFilter === 'not_ready_soh') {
+    data = data.filter(r => r['REMARK'] === 'Not Ready Posting' && (r['SOH WH']||0) > 0);
+  } else if (wrRemarkFilter === 'not_ready_zero') {
+    data = data.filter(r => r['REMARK'] === 'Not Ready Posting' && (r['SOH WH']||0) === 0);
+  }
+
   if (wrSortKey === 'AUTHSD DATE') {
     data = data.sort((a,b) => (a._dateTs - b._dateTs) * wrSortDir);
   } else if (wrSortKey) {
@@ -2884,7 +2933,7 @@ function applyWrFilters() {
   wrPage = 1;
   const cntEl = document.getElementById('wrRecordCount');
   if (cntEl) cntEl.textContent = `${wrData.length.toLocaleString('id-ID')} record`;
-  updateWrSummary(data);
+  renderWrFilterBar();
   renderWrTable();
 }
 
@@ -2955,7 +3004,7 @@ function renderWrTable() {
       <td class="num">Rp ${fmtRpFull(r['PRICE']||0)}</td>
       <td class="num">Rp ${fmtRpFull(r['AMOUNT PRICE']||0)}</td>
       <td class="num">${r['SOH WH']||0}</td>
-      <td><span class="remark-tag ${r['_remarkCls']}">${r['REMARK']}</span></td>
+      <td><span class="remark-tag ${r['_remarkCls']} clickable" onclick="event.stopPropagation(); quickFilterWrRemark('${r['SOH WH']>0 && r['REMARK']==='Not Ready Posting' ? 'not_ready_soh' : r['REMARK']==='Ready Posting' ? 'ready' : 'not_ready_zero'}')" title="Klik untuk filter">${r['REMARK']}</span></td>
     </tr>`;
     }).join('');
   }
