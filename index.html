@@ -326,7 +326,11 @@
   .kpi-card.teal .kpi-value { color: var(--teal); }
   .kpi-card.cyan .kpi-value { color: var(--cyan); }
   .kpi-sub { font-size: 10px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
-  .kpi-amount { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; margin-top: 6px; opacity: 0.85; }
+  .kpi-amount {
+    font-family: var(--font-mono); font-size: 16px; font-weight: 700; margin-top: 10px;
+    padding-top: 8px; border-top: 1px dashed var(--border); opacity: 1; letter-spacing: -0.01em;
+  }
+  .kpi-amount::before { content: 'Amount: '; font-family: var(--font); font-size: 9.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 2px; }
   .kpi-card.amber .kpi-amount { color: var(--amber); }
   .kpi-card.green .kpi-amount { color: var(--green); }
   .kpi-card.blue .kpi-amount { color: var(--blue); }
@@ -578,6 +582,11 @@
   .aging-6190 { background: rgba(249,115,22,0.15); color: #f97316; border: 1px solid rgba(249,115,22,0.3); }
   .aging-90up { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
   .aging-none { background: rgba(100,116,139,0.15); color: var(--text-muted); border: 1px solid var(--border); }
+  .filter-clear-btn {
+    background: none; border: 1px solid var(--border); color: var(--text-dim);
+    border-radius: 999px; padding: 2px 9px; font-size: 11px; cursor: pointer; transition: all 0.15s;
+  }
+  .filter-clear-btn:hover { border-color: var(--red); color: var(--red); }
 
   .jd-tag {
     font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 10px;
@@ -1126,6 +1135,33 @@
     </div>
   </div>
   <div style="margin:8px 28px 0;display:flex;align-items:center;gap:8px" id="wrFilterActiveBar"></div>
+
+  <div class="kpi-row" id="wrAgingRow" style="grid-template-columns:repeat(4,1fr);margin:16px 28px 0">
+    <div class="kpi-card green" id="wrCardAging030" onclick="quickFilterWrAging('0-30')" title="Klik untuk filter">
+      <div class="kpi-icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+      <div class="kpi-label">Aging 0-30 Hari</div>
+      <div class="kpi-value" id="wrAging030Count">—</div>
+      <div class="kpi-amount" id="wrAging030Amt">—</div>
+    </div>
+    <div class="kpi-card amber" id="wrCardAging3160" onclick="quickFilterWrAging('31-60')" title="Klik untuk filter">
+      <div class="kpi-icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+      <div class="kpi-label">Aging 31-60 Hari</div>
+      <div class="kpi-value" id="wrAging3160Count">—</div>
+      <div class="kpi-amount" id="wrAging3160Amt">—</div>
+    </div>
+    <div class="kpi-card" id="wrCardAging6190" onclick="quickFilterWrAging('61-90')" title="Klik untuk filter" style="cursor:pointer">
+      <div class="kpi-icon-badge" style="background:rgba(249,115,22,0.15);color:#f97316"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+      <div class="kpi-label">Aging 61-90 Hari</div>
+      <div class="kpi-value" id="wrAging6190Count" style="color:#f97316">—</div>
+      <div class="kpi-amount" id="wrAging6190Amt" style="color:#f97316">—</div>
+    </div>
+    <div class="kpi-card red" id="wrCardAging90up" onclick="quickFilterWrAging('90 UP')" title="Klik untuk filter">
+      <div class="kpi-icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><circle cx="12" cy="16.5" r="0.6" fill="currentColor" stroke="none"/><path d="M10.3 4.5a2 2 0 0 1 3.4 0l8 14A2 2 0 0 1 20 21.5H4a2 2 0 0 1-1.7-3l8-14z"/></svg></div>
+      <div class="kpi-label">Aging 90+ Hari</div>
+      <div class="kpi-value" id="wrAging90upCount">—</div>
+      <div class="kpi-amount" id="wrAging90upAmt">—</div>
+    </div>
+  </div>
 
   <div class="chart-section" id="wrTrendSection" style="margin:16px 28px 0;display:none">
     <h3><svg class="section-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8a1 1 0 0 1 1 1v16l-4-2-4 2-4-2V4a1 1 0 0 1 1-1z"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4"/></svg>Trend Amount WR Detail (3 Kategori)</h3>
@@ -2851,10 +2887,18 @@ let WR_PAGE_SIZE = 50;
 let wrSortKey = null;
 let wrSortDir = 1;
 let wrRemarkFilter = 'all'; // 'all' | 'ready' | 'not_ready_soh' | 'not_ready_zero'
+let wrAgingFilter = 'all'; // 'all' | '0-30' | '31-60' | '61-90' | '90 UP'
 
 function quickFilterWrRemark(type) {
   wrRemarkFilter = (wrRemarkFilter === type) ? 'all' : type;
   updateWrCardActiveState();
+  applyWrFilters();
+  document.getElementById('wrTable').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function quickFilterWrAging(bucket) {
+  wrAgingFilter = (wrAgingFilter === bucket) ? 'all' : bucket;
+  updateWrAgingCardActiveState();
   applyWrFilters();
   document.getElementById('wrTable').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -2867,24 +2911,54 @@ function updateWrCardActiveState() {
   });
 }
 
+function updateWrAgingCardActiveState() {
+  const map = { '0-30': 'wrCardAging030', '31-60': 'wrCardAging3160', '61-90': 'wrCardAging6190', '90 UP': 'wrCardAging90up' };
+  Object.keys(map).forEach(key => {
+    const el = document.getElementById(map[key]);
+    if (el) el.classList.toggle('active-filter', wrAgingFilter === key);
+  });
+}
+
+function updateWrAgingSummary(data) {
+  const buckets = [
+    { key: '0-30', countEl: 'wrAging030Count', amtEl: 'wrAging030Amt' },
+    { key: '31-60', countEl: 'wrAging3160Count', amtEl: 'wrAging3160Amt' },
+    { key: '61-90', countEl: 'wrAging6190Count', amtEl: 'wrAging6190Amt' },
+    { key: '90 UP', countEl: 'wrAging90upCount', amtEl: 'wrAging90upAmt' },
+  ];
+  buckets.forEach(b => {
+    const rows = data.filter(r => r['AGING'] === b.key);
+    const amt = rows.reduce((s,r) => s + (r['AMOUNT PRICE']||0), 0);
+    const countEl = document.getElementById(b.countEl);
+    const amtEl = document.getElementById(b.amtEl);
+    if (countEl) countEl.textContent = rows.length.toLocaleString('id-ID') + ' item';
+    if (amtEl) amtEl.textContent = fmtRp(amt);
+  });
+}
+
 function renderWrFilterBar() {
   const bar = document.getElementById('wrFilterActiveBar');
   if (!bar) return;
-  const labels = {
+  const remarkLabels = {
     ready: { text: 'Ready Posting', cls: 'remark-ready' },
     not_ready_soh: { text: 'Not Ready Posting (SOH WH > 0)', cls: 'remark-notready' },
     not_ready_zero: { text: 'Not Ready Posting (SOH = 0)', cls: 'remark-notready' },
   };
-  if (wrRemarkFilter === 'all' || !labels[wrRemarkFilter]) {
-    bar.innerHTML = '';
-    return;
+  const agingClsMap = { '0-30': 'aging-030', '31-60': 'aging-3160', '61-90': 'aging-6190', '90 UP': 'aging-90up' };
+
+  let html = '';
+  if (wrRemarkFilter !== 'all' && remarkLabels[wrRemarkFilter]) {
+    const l = remarkLabels[wrRemarkFilter];
+    html += `<span style="font-size:11.5px;color:var(--text-muted)">Filter:</span>
+      <span class="remark-tag ${l.cls}">${l.text}</span>
+      <button onclick="quickFilterWrRemark('${wrRemarkFilter}')" class="filter-clear-btn">✕</button>`;
   }
-  const l = labels[wrRemarkFilter];
-  bar.innerHTML = `
-    <span style="font-size:11.5px;color:var(--text-muted)">Filter aktif:</span>
-    <span class="remark-tag ${l.cls}">${l.text}</span>
-    <button onclick="quickFilterWrRemark('${wrRemarkFilter}')" style="background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:999px;padding:2px 9px;font-size:11px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">✕ Hapus filter</button>
-  `;
+  if (wrAgingFilter !== 'all') {
+    html += `${html ? '' : '<span style="font-size:11.5px;color:var(--text-muted)">Filter:</span>'}
+      <span class="aging-tag ${agingClsMap[wrAgingFilter]}">Aging ${wrAgingFilter}</span>
+      <button onclick="quickFilterWrAging('${wrAgingFilter}')" class="filter-clear-btn">✕</button>`;
+  }
+  bar.innerHTML = html;
 }
 
 function setWrDbStatus(state, text) {
@@ -2928,6 +3002,7 @@ function applyWrFilters() {
     );
   }
   updateWrSummary(data);
+  updateWrAgingSummary(data);
 
   if (wrRemarkFilter === 'ready') {
     data = data.filter(r => r['REMARK'] === 'Ready Posting');
@@ -2935,6 +3010,10 @@ function applyWrFilters() {
     data = data.filter(r => r['REMARK'] === 'Not Ready Posting' && (r['SOH WH']||0) > 0);
   } else if (wrRemarkFilter === 'not_ready_zero') {
     data = data.filter(r => r['REMARK'] === 'Not Ready Posting' && (r['SOH WH']||0) === 0);
+  }
+
+  if (wrAgingFilter !== 'all') {
+    data = data.filter(r => r['AGING'] === wrAgingFilter);
   }
 
   if (wrSortKey === 'AUTHSD DATE') {
