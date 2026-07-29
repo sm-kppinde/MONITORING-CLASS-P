@@ -802,7 +802,7 @@
     <p>Drag & drop atau klik untuk pilih file .xlsx (format SOH MEGA)</p>
   </div>
   <button class="upload-btn" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Pilih File</button>
-  <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFileUpload(event)">
+  <input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm,.xlsb,.csv,.ods" onchange="handleFileUpload(event)">
 </div>
 <div id="uploadStatus"></div>
 
@@ -813,7 +813,7 @@
     <p>Drag & drop atau klik untuk pilih file .xlsx berisi District, AUTHSD DATE, EQUIP NO, WR NO, WR ITEM, STOCK CODE, dll</p>
   </div>
   <button class="upload-btn" onclick="event.stopPropagation(); document.getElementById('wrFileInput').click()">Pilih File WR</button>
-  <input type="file" id="wrFileInput" accept=".xlsx,.xls" onchange="handleWrFileUpload(event)">
+  <input type="file" id="wrFileInput" accept=".xlsx,.xls,.xlsm,.xlsb,.csv,.ods" onchange="handleWrFileUpload(event)">
 </div>
 <div id="wrUploadStatus"></div>
 
@@ -2412,38 +2412,77 @@ function processFile(file) {
       const wb = XLSX.read(e.target.result, {type:'array'});
       const ws = wb.Sheets[wb.SheetNames[0]];
       const raw = XLSX.utils.sheet_to_json(ws, {defval:0});
+
+      if (!raw.length) { status.style.color='#ef4444'; status.textContent='⚠ File kosong atau tidak terbaca. Pastikan sheet pertama berisi data dengan baris header.'; return; }
+
+      // Cari nama kolom secara fleksibel: tanpa spasi/titik/underscore, huruf kecil semua
+      const normalize = s => String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+      const headerKeys = Object.keys(raw[0]);
+      const findCol = (...aliases) => {
+        const normAliases = aliases.map(normalize);
+        return headerKeys.find(h => normAliases.includes(normalize(h)));
+      };
+
+      const colWarehouse   = findCol('WAREHOUSE','WH','Warehouse Code');
+      const colStockCode   = findCol('STOCK CODE','StockCode','Kode Stock','Kode Barang');
+      const colMnemonic    = findCol('MNEMONIC','Mnemonic Code');
+      const colItemName    = findCol('ITEM NAME','Item Name','Nama Item');
+      const colDescription = findCol('DESCRIPTION','Description','Deskripsi');
+      const colClass       = findCol('CLASS','Class Code');
+      const colGroupClass  = findCol('GROUP CLASS','Group Class Code');
+      const colUoi         = findCol('UOI','UOM','Unit');
+      const colMit         = findCol('MIT');
+      const colOwnedSoh    = findCol('OWNED SOH','Owned Soh');
+      const colConsSoh     = findCol('CONS SOH','Consign Soh');
+      const colTotalSoh    = findCol('TOTAL SOH','Total Soh');
+      const colAvailable   = findCol('AVAILABLE','Available Qty');
+      const colDuesIn      = findCol('DUES IN','Dues In');
+      const colDuesOut     = findCol('DUES OUT','Dues Out');
+      const colIssuePrice  = findCol('ISSUE PRICE','Issue Price','Harga','Price');
+      const colAmountOwn   = findCol('AMOUNT OWN STOK','Amount Own Stok','Amount Own Stock');
+      const colAmountCons  = findCol('AMOUNT CONSIGN','Amount Consign');
+      const colPriceCode   = findCol('PRICE CODE','Price Code');
+      const colBinLoc      = findCol('BIN LOC','Bin Loc','Bin Location');
+      const colExpElement  = findCol('EXPENSE ELEMENT','Expense Element');
+
+      if (!colStockCode || !colClass) {
+        status.style.color='#ef4444';
+        status.textContent = `⚠ Kolom Stock Code atau Class tidak ditemukan di file ini. Kolom yang terbaca: ${headerKeys.join(', ')}`;
+        return;
+      }
+
       const classP = raw.filter(r => {
-        const cls = (r['CLASS']||r['Class']||'').toString().trim().toUpperCase();
-        const soh = parseFloat(r['TOTAL SOH']||r['Total SOH']||0);
-        const mit = parseFloat(r['MIT']||0);
-        const duesIn = parseFloat(r['DUES IN']||r['Dues In']||0);
-        const duesOut = parseFloat(r['DUES OUT']||r['Dues Out']||0);
+        const cls = String(r[colClass]||'').trim().toUpperCase();
+        const soh = parseFloat(colTotalSoh ? r[colTotalSoh] : 0) || 0;
+        const mit = parseFloat(colMit ? r[colMit] : 0) || 0;
+        const duesIn = parseFloat(colDuesIn ? r[colDuesIn] : 0) || 0;
+        const duesOut = parseFloat(colDuesOut ? r[colDuesOut] : 0) || 0;
         // Tampilkan item Class P yang punya nilai di salah satu: SOH, MIT, Dues In, atau Dues Out
         return cls === 'P' && (soh > 0 || mit > 0 || duesIn > 0 || duesOut > 0);
       });
       if (!classP.length) { status.style.color='#ef4444'; status.textContent='⚠ Tidak ada data Class P relevan di file ini.'; return; }
       allData = classP.map(r => ({
-        'WAREHOUSE': r['WAREHOUSE']||'MEGA',
-        'STOCK CODE': (r['STOCK CODE']||r['Stock Code']||'').toString().trim(),
-        'MNEMONIC': (r['MNEMONIC']||r['Mnemonic']||'').toString(),
-        'ITEM NAME': r['ITEM NAME']||r['Item Name']||'',
-        'DESCRIPTION': r['DESCRIPTION']||r['Description']||'',
-        'CLASS': (r['CLASS']||r['Class']||'P').toString().trim().toUpperCase(),
-        'GROUP CLASS': (r['GROUP CLASS']||r['Group Class']||'0000').toString(),
-        'UOI': r['UOI']||'',
-        'MIT': parseFloat(r['MIT']||0),
-        'OWNED SOH': parseFloat(r['OWNED SOH']||0),
-        'CONS SOH': parseFloat(r['CONS SOH']||0),
-        'TOTAL SOH': parseFloat(r['TOTAL SOH']||0),
-        'AVAILABLE': parseFloat(r['AVAILABLE']||0),
-        'DUES IN': parseFloat(r['DUES IN']||0),
-        'DUES OUT': parseFloat(r['DUES OUT']||0),
-        'ISSUE PRICE': parseFloat(r['ISSUE PRICE']||0),
-        'AMOUNT OWN STOK': parseFloat(r['AMOUNT OWN STOK']||0),
-        'AMOUNT CONSIGN': parseFloat(r['AMOUNT CONSIGN']||0),
-        'PRICE CODE': (r['PRICE CODE']||'').toString(),
-        'BIN LOC': (r['BIN LOC']||r['Bin Loc']||r['BIN LOCATION']||'').toString(),
-        'EXPENSE ELEMENT': (r['EXPENSE ELEMENT']||r['Expense Element']||'').toString(),
+        'WAREHOUSE': colWarehouse ? String(r[colWarehouse]||'MEGA') : 'MEGA',
+        'STOCK CODE': String(r[colStockCode]||'').trim(),
+        'MNEMONIC': colMnemonic ? String(r[colMnemonic]||'') : '',
+        'ITEM NAME': colItemName ? (r[colItemName]||'') : '',
+        'DESCRIPTION': colDescription ? (r[colDescription]||'') : '',
+        'CLASS': String(r[colClass]||'P').trim().toUpperCase(),
+        'GROUP CLASS': colGroupClass ? String(r[colGroupClass]||'0000') : '0000',
+        'UOI': colUoi ? (r[colUoi]||'') : '',
+        'MIT': colMit ? parseFloat(r[colMit]||0) : 0,
+        'OWNED SOH': colOwnedSoh ? parseFloat(r[colOwnedSoh]||0) : 0,
+        'CONS SOH': colConsSoh ? parseFloat(r[colConsSoh]||0) : 0,
+        'TOTAL SOH': colTotalSoh ? parseFloat(r[colTotalSoh]||0) : 0,
+        'AVAILABLE': colAvailable ? parseFloat(r[colAvailable]||0) : 0,
+        'DUES IN': colDuesIn ? parseFloat(r[colDuesIn]||0) : 0,
+        'DUES OUT': colDuesOut ? parseFloat(r[colDuesOut]||0) : 0,
+        'ISSUE PRICE': colIssuePrice ? parseFloat(r[colIssuePrice]||0) : 0,
+        'AMOUNT OWN STOK': colAmountOwn ? parseFloat(r[colAmountOwn]||0) : 0,
+        'AMOUNT CONSIGN': colAmountCons ? parseFloat(r[colAmountCons]||0) : 0,
+        'PRICE CODE': colPriceCode ? String(r[colPriceCode]||'') : '',
+        'BIN LOC': colBinLoc ? String(r[colBinLoc]||'') : '',
+        'EXPENSE ELEMENT': colExpElement ? String(r[colExpElement]||'') : '',
       }));
       const now = new Date();
       document.getElementById('updateDateLabel').textContent = `Data: ${now.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}`;
