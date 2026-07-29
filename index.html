@@ -2457,10 +2457,18 @@ function processFile(file) {
         const mit = parseFloat(colMit ? r[colMit] : 0) || 0;
         const duesIn = parseFloat(colDuesIn ? r[colDuesIn] : 0) || 0;
         const duesOut = parseFloat(colDuesOut ? r[colDuesOut] : 0) || 0;
-        // Tampilkan item Class P yang punya nilai di salah satu: SOH, MIT, Dues In, atau Dues Out
-        return cls === 'P' && (soh > 0 || mit > 0 || duesIn > 0 || duesOut > 0);
+        // Hanya ambil Warehouse MEGA (jika kolom WAREHOUSE ada di file; jika tidak ada, anggap semua MEGA)
+        const wh = colWarehouse ? String(r[colWarehouse]||'').trim().toUpperCase() : 'MEGA';
+        // Tampilkan item Class P dari Warehouse MEGA yang punya nilai di salah satu: SOH, MIT, Dues In, atau Dues Out
+        return cls === 'P' && wh === 'MEGA' && (soh > 0 || mit > 0 || duesIn > 0 || duesOut > 0);
       });
-      if (!classP.length) { status.style.color='#ef4444'; status.textContent='⚠ Tidak ada data Class P relevan di file ini.'; return; }
+      if (!classP.length) {
+        status.style.color='#ef4444';
+        status.textContent = colWarehouse
+          ? '⚠ Tidak ada data Class P dari Warehouse MEGA di file ini. Pastikan kolom Warehouse berisi nilai "MEGA".'
+          : '⚠ Tidak ada data Class P relevan di file ini.';
+        return;
+      }
       allData = classP.map(r => ({
         'WAREHOUSE': colWarehouse ? String(r[colWarehouse]||'MEGA') : 'MEGA',
         'STOCK CODE': String(r[colStockCode]||'').trim(),
@@ -2484,6 +2492,13 @@ function processFile(file) {
         'BIN LOC': colBinLoc ? String(r[colBinLoc]||'') : '',
         'EXPENSE ELEMENT': colExpElement ? String(r[colExpElement]||'') : '',
       }));
+
+      // Deteksi Stock Code duplikat (muncul lebih dari sekali) — tidak digabung otomatis,
+      // hanya diberi peringatan agar Admin bisa cek manual di file sumbernya.
+      const codeCounts = {};
+      allData.forEach(r => { const c = r['STOCK CODE']; codeCounts[c] = (codeCounts[c]||0) + 1; });
+      const dupCodes = Object.keys(codeCounts).filter(c => codeCounts[c] > 1);
+
       const now = new Date();
       document.getElementById('updateDateLabel').textContent = `Data: ${now.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}`;
       buildGroupFilter();
@@ -2498,9 +2513,17 @@ function processFile(file) {
       if (dbConnected) {
         await saveToDb(allData, file.name);
         await saveDailySnapshot();
+        if (dupCodes.length) {
+          status.style.color = '#F2A33C';
+          status.textContent = `⚠ Data tersimpan, tapi ada ${dupCodes.length} Stock Code duplikat di Warehouse MEGA (tidak digabung, tetap tampil sebagai baris terpisah): ${dupCodes.slice(0,10).join(', ')}${dupCodes.length>10?', ...':''}`;
+        }
       } else {
         status.style.color='#22c55e';
         status.textContent = `✅ ${classP.length} item Class P berhasil diupdate dari: ${file.name} (lokal saja — hubungkan database agar tersimpan untuk semua user, klik "Setup Database")`;
+        if (dupCodes.length) {
+          status.style.color = '#F2A33C';
+          status.textContent += ` — ⚠ ${dupCodes.length} Stock Code duplikat ditemukan: ${dupCodes.slice(0,10).join(', ')}${dupCodes.length>10?', ...':''}`;
+        }
       }
       if (typeof applyWrFilters === 'function') applyWrFilters();
       if (typeof saveWrDailySnapshot === 'function') saveWrDailySnapshot();
