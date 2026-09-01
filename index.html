@@ -1472,18 +1472,25 @@ function buildWrIndex() {
   });
 }
 
-// SOH WH: ambil Total SOH dari data stock utama (allData) berdasarkan Stock Code
+// SOH WH: ambil langsung dari data upload WR (kolom SOH_WH / kolom V pada file export WR) berdasarkan Stock Code
 function getSohWh(stockCode) {
   const code = String(stockCode||'').trim();
-  const found = allData.find(r => String(r['STOCK CODE']||'').trim() === code);
-  return found ? (found['TOTAL SOH'] || 0) : 0;
+  const found = wrData.find(r => String(r['STOCK CODE']||'').trim() === code);
+  return found ? (found['SOH WH'] || 0) : 0;
 }
 
-// Price: ambil Issue Price dari data stock utama (allData) berdasarkan Stock Code
+// Price: ambil Issue Price dari data stock utama (allData / upload SOH MEGA) berdasarkan Stock Code
 function getPrice(stockCode) {
   const code = String(stockCode||'').trim();
   const found = allData.find(r => String(r['STOCK CODE']||'').trim() === code);
   return found ? (found['ISSUE PRICE'] || 0) : 0;
+}
+
+// UOI: ambil dari data stock utama (allData / upload SOH MEGA) berdasarkan Stock Code
+function getUoi(stockCode) {
+  const code = String(stockCode||'').trim();
+  const found = allData.find(r => String(r['STOCK CODE']||'').trim() === code);
+  return found ? (found['UOI'] || '') : '';
 }
 
 // MIT: ambil dari data stock utama (allData) berdasarkan Stock Code — khusus untuk export Excel
@@ -1606,6 +1613,7 @@ async function loadWrFromDb() {
       'WH': r.wh || '',
       'UOI': r.uoi || '',
       'QTY REQ': Number(r.qty_req) || 0,
+      'SOH WH': Number(r.soh_wh) || 0,
     }));
     buildWrIndex();
     wrRemarkById = computeWrRemarks();
@@ -1641,6 +1649,7 @@ async function saveWrToDb(rows, filename) {
       wh: r['WH'] || '',
       uoi: r['UOI'] || '',
       qty_req: r['QTY REQ'] || 0,
+      soh_wh: r['SOH WH'] || 0,
     }));
 
     for (let i = 0; i < payload.length; i += batchSize) {
@@ -1699,6 +1708,7 @@ function processWrFile(file) {
       const colWh         = findCol('WH','Warehouse');
       const colUoi        = findCol('UOI','UOM','Unit');
       const colQtyReq     = findCol('QTY REQ','Qty Req','Quantity Req','QTY REQUEST','Qty Request');
+      const colSohWh      = findCol('SOH WH','SOH_WH','Soh Wh');
 
       if (!colStockCode) {
         status.style.color='#ef4444';
@@ -1722,6 +1732,7 @@ function processWrFile(file) {
           'WH': colWh ? String(r[colWh]||'').trim() : '',
           'UOI': colUoi ? String(r[colUoi]||'').trim() : '',
           'QTY REQ': colQtyReq ? parseFloat(r[colQtyReq]||0) : 0,
+          'SOH WH': colSohWh ? parseFloat(r[colSohWh]||0) : 0,
         }));
       if (!rows.length) { status.style.color='#ef4444'; status.textContent='⚠ Tidak ada baris dengan Stock Code terisi di file ini.'; return; }
 
@@ -3047,6 +3058,7 @@ function applyWrFilters() {
   let data = wrData.map(r => {
     const sohWh = getSohWh(r['STOCK CODE']);
     const price = getPrice(r['STOCK CODE']);
+    const uoi = getUoi(r['STOCK CODE']);
     const qtyReq = r['QTY REQ'] || 0;
     const amountPrice = price * qtyReq;
     const remarkLabel = wrRemarkById[r['ID']] || 'Not Ready Posting';
@@ -3059,7 +3071,7 @@ function applyWrFilters() {
     else if (ltPosting > 61) { aging = '61-90'; agingCls = 'aging-6190'; }
     else if (ltPosting > 30) { aging = '31-60'; agingCls = 'aging-3160'; }
     else { aging = '0-30'; agingCls = 'aging-030'; }
-    return { ...r, 'SOH WH': sohWh, 'PRICE': price, 'AMOUNT PRICE': amountPrice, 'REMARK': remarkLabel, '_remarkCls': remarkCls, '_dateTs': dateTs, 'LT POSTING': ltPosting, 'AGING': aging, '_agingCls': agingCls };
+    return { ...r, 'SOH WH': sohWh, 'PRICE': price, 'UOI': uoi, 'AMOUNT PRICE': amountPrice, 'REMARK': remarkLabel, '_remarkCls': remarkCls, '_dateTs': dateTs, 'LT POSTING': ltPosting, 'AGING': aging, '_agingCls': agingCls };
   });
   if (q) {
     data = data.filter(r =>
