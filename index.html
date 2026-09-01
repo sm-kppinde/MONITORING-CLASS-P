@@ -322,6 +322,17 @@
   .kpi-card.teal .kpi-amount { color: var(--teal); }
   .kpi-card.cyan .kpi-amount { color: var(--cyan); }
 
+  /* Compact/minimalist KPI cards for WR summary & aging rows */
+  #wrSummaryStrip, #wrAgingRow { gap: 10px; }
+  #wrSummaryStrip .kpi-card, #wrAgingRow .kpi-card { padding: 11px 13px; }
+  #wrSummaryStrip .kpi-icon-badge, #wrAgingRow .kpi-icon-badge { width: 22px; height: 22px; border-radius: 7px; margin-bottom: 6px; }
+  #wrSummaryStrip .kpi-icon-badge svg, #wrAgingRow .kpi-icon-badge svg { width: 12px; height: 12px; }
+  #wrSummaryStrip .kpi-value, #wrAgingRow .kpi-value { font-size: 19px; margin-top: 2px; }
+  #wrSummaryStrip .kpi-sub { font-size: 9px; margin-top: 2px; }
+  #wrAgingRow .kpi-sub { display: none; }
+  #wrSummaryStrip .kpi-amount, #wrAgingRow .kpi-amount { font-size: 12.5px; margin-top: 6px; padding-top: 6px; }
+  #wrSummaryStrip .kpi-amount::before, #wrAgingRow .kpi-amount::before { font-size: 8.5px; margin-bottom: 1px; }
+
   /* Summary strip */
   .summary-strip {
     display: flex; gap: 12px; padding: 12px 28px 0; flex-wrap: wrap;
@@ -1088,12 +1099,6 @@
     <span style="margin-left:auto" id="wrRecordCount">0 record</span>
   </div>
 
-  <div class="toolbar" style="margin:16px 28px 0">
-    <input type="text" class="search-box" id="wrSearchBox" placeholder="🔍 Cari WR No, Stock Code, Equip No, Item Name..." oninput="applyWrFilters()">
-    <button class="btn-print" id="wrTrendToggleBtn" onclick="toggleWrTrendChart()"><svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Tampilkan Trend</button>
-    <button class="btn-export" onclick="exportWrExcel()">⬇ Export Excel</button>
-  </div>
-
   <div class="kpi-row" id="wrSummaryStrip" style="grid-template-columns:repeat(3,1fr);margin:16px 28px 0">
     <div class="kpi-card green" id="wrCardReady" onclick="quickFilterWrRemark('ready')" title="Klik untuk filter">
       <div class="kpi-icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 5-5"/></svg></div>
@@ -1144,6 +1149,12 @@
       <div class="kpi-value" id="wrAging90upCount">—</div>
       <div class="kpi-amount" id="wrAging90upAmt">—</div>
     </div>
+  </div>
+
+  <div class="toolbar" style="margin:16px 28px 0">
+    <input type="text" class="search-box" id="wrSearchBox" placeholder="🔍 Cari WR No, Stock Code, Equip No, Item Name..." oninput="applyWrFilters()">
+    <button class="btn-print" id="wrTrendToggleBtn" onclick="toggleWrTrendChart()"><svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Tampilkan Trend</button>
+    <button class="btn-export" onclick="exportWrExcel()">⬇ Export Excel</button>
   </div>
 
   <div class="chart-section" id="wrTrendSection" style="margin:16px 28px 0;display:none">
