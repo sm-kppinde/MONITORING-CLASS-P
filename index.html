@@ -866,6 +866,7 @@
   <aside class="sidebar" id="appSidebar">
     <div class="sidebar-label">Menu</div>
     <button class="sidebar-btn active" id="navDashboardBtn" onclick="switchPage('dashboard')"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span>Dashboard</span></button>
+    <button class="sidebar-btn" id="navMasterDataBtn" onclick="switchPage('masterdata')"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/></svg><span>Master Data</span><svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
     <button class="sidebar-btn" onclick="goToJobdesk('Warehouse')"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V10l9-6 9 6v11"/><path d="M9 21v-7h6v7"/></svg><span>Warehouse</span></button>
     <button class="sidebar-btn" onclick="goToJobdesk('Inventory')"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>Inventory</span></button>
     <button class="sidebar-btn" onclick="goToJobdesk('Purchasing')"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L21 7H6"/></svg><span>Purchasing</span></button>
@@ -1044,7 +1045,7 @@
   <div class="chart-card">
     <div class="chart-title">⚡ Aksi Cepat</div>
     <div class="quick-actions">
-      <button class="quick-action-btn" onclick="document.getElementById('filterStatus').value='full'; applyFilters(); document.querySelector('.table-wrap')?.scrollIntoView({behavior:'smooth'});">
+      <button class="quick-action-btn" onclick="quickFilterKPI('full')">
         <div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 5-5"/></svg></div>
         <div class="qa-text"><div class="qa-title">Siap Posting</div><div class="qa-sub">Lihat item Ready Posting Full</div></div>
       </button>
@@ -1063,7 +1064,10 @@
     </div>
   </div>
 </div>
+</div> <!-- end viewDashboard -->
 
+<!-- ============ MASTER DATA VIEW ============ -->
+<div id="viewMasterData" style="display:none">
 <!-- Toolbar -->
 <div class="toolbar">
   <input type="text" class="search-box" id="searchBox" placeholder="Cari stock code, item name, description..." oninput="applyFilters()">
@@ -1169,7 +1173,7 @@
     <div id="modalWrSection" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)"></div>
   </div>
 </div>
-</div> <!-- end viewDashboard -->
+</div> <!-- end viewMasterData -->
 
 <!-- ============ TREND DASHBOARD VIEW ============ -->
 <div id="viewTrend" style="display:none">
@@ -2172,9 +2176,10 @@ function updateJobdeskSummary() {
 }
 
 function filterByJobdesk(dept) {
+  switchPage('masterdata');
   document.getElementById('filterJobdesk').value = dept;
   applyFilters();
-  document.getElementById('filterJobdesk').scrollIntoView({ behavior:'smooth', block:'center' });
+  setTimeout(() => document.getElementById('filterJobdesk').scrollIntoView({ behavior:'smooth', block:'center' }), 50);
 }
 
 function updateSummaryStrip() {
@@ -2272,6 +2277,7 @@ function buildGroupFilter() {
 }
 
 function quickFilterKPI(status) {
+  switchPage('masterdata');
   document.getElementById('filterStatus').value = status;
   document.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('active-filter'));
   const map = {partial:0,full:1,naik_ro:2,kurang_wr:3};
@@ -2756,24 +2762,22 @@ function closeSidebarMobile() {
   if (sidebar) sidebar.classList.remove('open');
 }
 function goToTable(status) {
-  switchPage('dashboard');
+  switchPage('masterdata');
   const sel = document.getElementById('filterStatus');
   if (sel) sel.value = status;
   applyFilters();
-  setTimeout(() => document.querySelector('.table-wrap')?.scrollIntoView({behavior:'smooth', block:'start'}), 50);
   closeSidebarMobile();
 }
 function goToStatus(status) {
   goToTable(status);
 }
 function goToJobdesk(jobdesk) {
-  switchPage('dashboard');
+  switchPage('masterdata');
   const statusSel = document.getElementById('filterStatus');
   const jobSel = document.getElementById('filterJobdesk');
   if (statusSel) statusSel.value = 'all';
   if (jobSel) jobSel.value = jobdesk;
   applyFilters();
-  setTimeout(() => document.querySelector('.table-wrap')?.scrollIntoView({behavior:'smooth', block:'start'}), 50);
   closeSidebarMobile();
 }
 
@@ -2832,9 +2836,11 @@ async function loadWrTrendSnapshots() {
 
 function switchPage(page) {
   document.getElementById('viewDashboard').style.display = page === 'dashboard' ? 'block' : 'none';
+  document.getElementById('viewMasterData').style.display = page === 'masterdata' ? 'block' : 'none';
   document.getElementById('viewTrend').style.display = page === 'trend' ? 'block' : 'none';
   document.getElementById('viewWr').style.display = page === 'wr' ? 'block' : 'none';
   document.getElementById('navDashboardBtn').classList.toggle('active', page === 'dashboard');
+  document.getElementById('navMasterDataBtn').classList.toggle('active', page === 'masterdata');
   document.getElementById('navTrendBtn').classList.toggle('active', page === 'trend');
   document.getElementById('navWrBtn').classList.toggle('active', page === 'wr');
   closeSidebarMobile();
