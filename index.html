@@ -179,6 +179,13 @@
   .sidebar-footer-badge { display: block; text-align: center; width: 100%; }
   .sidebar-footer-avatar .avatar-chip { width: 100%; }
 
+  .upload-hint-note {
+    margin: 0 28px 12px; padding: 10px 14px; border-radius: 10px;
+    background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.25);
+    color: var(--text-dim); font-size: 12px; line-height: 1.5;
+  }
+  .upload-hint-note strong { color: var(--blue); }
+
   /* App shell: sidebar + main content */
   .app-shell { display: flex; align-items: flex-start; }
   .sidebar {
@@ -873,7 +880,7 @@
   <div class="header-icon">P</div>
   <div>
     <div class="header-title">Monitoring OS WR KPP INDE</div>
-    <div class="header-sub">Stock On Hand · MIT · Dues In · Dues Out · <span id="headerWhLabel">MEGA</span></div>
+    <div class="header-sub">Stock On Hand · MIT · Dues In · Dues Out — Menampilkan warehouse: <span id="headerWhLabel">MEGA</span></div>
   </div>
 </div>
 
@@ -1103,6 +1110,7 @@
 
 <!-- ============ UPLOAD DATA VIEW ============ -->
 <div id="viewUpload" style="display:none; padding: 4px 0 24px;">
+<div class="upload-hint-note">ℹ️ File yang diupload di sini akan diproses untuk <strong>semua warehouse</strong> sekaligus (VHS, Non-VHS, maupun Other) — bukan hanya warehouse yang sedang dipilih di sidebar. Setelah upload, gunakan menu Warehouse di sidebar untuk melihat data per warehouse.</div>
 <!-- Status bar + Admin login -->
 <div class="db-bar" id="dbBar">
   <span id="dbStatusDot" class="db-dot db-dot-off"></span>
