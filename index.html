@@ -1115,8 +1115,8 @@
 <div class="upload-banner" id="uploadBanner" onclick="document.getElementById('fileInput').click()" style="display:none">
   <div class="upload-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4.5 4.5 0 0 1-1-8.87A6 6 0 0 1 17.5 8H18a4 4 0 0 1 1 7.87"/><path d="M12 12v8M9 15l3-3 3 3"/></svg></div>
   <div class="upload-text">
-    <strong>Update Data via Upload Excel</strong>
-    <p>Drag & drop atau klik untuk pilih file .xlsx (format SOH MEGA)</p>
+    <strong>Update Data PMR17R</strong>
+    <p>Drag & drop atau klik untuk pilih file .xlsx/.xlsb berisi semua Class &amp; semua Warehouse (format PMR17R)</p>
   </div>
   <button class="upload-btn" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Pilih File</button>
   <input type="file" id="fileInput" accept=".xlsx,.xls,.xlsm,.xlsb,.csv,.ods" onchange="handleFileUpload(event)">
@@ -1126,7 +1126,7 @@
 <div class="upload-banner wr-upload-banner" id="wrUploadBanner" onclick="document.getElementById('wrFileInput').click()" style="display:none">
   <div class="upload-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8a1 1 0 0 1 1 1v16l-4-2-4 2-4-2V4a1 1 0 0 1 1-1z"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4"/></svg></div>
   <div class="upload-text">
-    <strong>Update Data No WR (Stock Code &amp; No WR)</strong>
+    <strong>Update Data OS WR (Stock Code &amp; No WR)</strong>
     <p>Drag & drop atau klik untuk pilih file .xlsx berisi District, AUTHSD DATE, EQUIP NO, WR NO, WR ITEM, STOCK CODE, dll</p>
   </div>
   <button class="upload-btn" onclick="event.stopPropagation(); document.getElementById('wrFileInput').click()">Pilih File WR</button>
@@ -1992,16 +1992,8 @@ function processWrFile(file) {
         }));
       if (!rows.length) { status.style.color='#ef4444'; status.textContent='⚠ Tidak ada baris dengan Stock Code terisi di file ini.'; return; }
 
-      // Hanya ambil baris dengan Current Class = P (semua warehouse ditampung, difilter per-warehouse di sidebar)
-      const filteredRows = rows.filter(r =>
-        r['CURRENT CLASS'].trim().toUpperCase() === 'P'
-      );
-      if (!filteredRows.length) {
-        status.style.color='#ef4444';
-        status.textContent = `⚠ Tidak ada baris dengan Current Class = P di file ini (dari ${rows.length} baris terbaca).`;
-        return;
-      }
-      const rows2 = filteredRows;
+      // Ambil semua baris (semua Class, semua warehouse) — difilter per-warehouse di sidebar
+      const rows2 = rows;
 
       if (!colWrNo) {
         status.style.color='#F2A33C';
@@ -2015,7 +2007,7 @@ function processWrFile(file) {
       if (typeof applyWrFilters === 'function') applyWrFilters();
       if (colWrNo) {
         status.style.color='#22c55e';
-        status.textContent = `✅ ${rows2.length} baris WR (Class P, semua warehouse) tersimpan dari ${rows.length} baris total di file: ${file.name}. Menyimpan ke database...`;
+        status.textContent = `✅ ${rows2.length} baris WR (semua Class, semua warehouse) tersimpan dari file: ${file.name}. Menyimpan ke database...`;
       }
       await saveWrToDb(rawWrData, file.name);
       await saveWrDailySnapshot();
@@ -2706,18 +2698,17 @@ function processFile(file) {
       }
 
       const classP = raw.filter(r => {
-        const cls = String(r[colClass]||'').trim().toUpperCase();
         const soh = parseFloat(colTotalSoh ? r[colTotalSoh] : 0) || 0;
         const mit = parseFloat(colMit ? r[colMit] : 0) || 0;
         const duesIn = parseFloat(colDuesIn ? r[colDuesIn] : 0) || 0;
         const duesOut = parseFloat(colDuesOut ? r[colDuesOut] : 0) || 0;
-        // Ambil semua Warehouse (difilter per-warehouse nanti lewat menu sidebar)
-        // Tampilkan item Class P yang punya nilai di salah satu: SOH, MIT, Dues In, atau Dues Out
-        return cls === 'P' && (soh > 0 || mit > 0 || duesIn > 0 || duesOut > 0);
+        // Ambil semua Class & semua Warehouse (difilter per-warehouse nanti lewat menu sidebar)
+        // Tampilkan item yang punya nilai di salah satu: SOH, MIT, Dues In, atau Dues Out
+        return (soh > 0 || mit > 0 || duesIn > 0 || duesOut > 0);
       });
       if (!classP.length) {
         status.style.color='#ef4444';
-        status.textContent = '⚠ Tidak ada data Class P relevan di file ini.';
+        status.textContent = '⚠ Tidak ada data relevan di file ini (semua SOH/MIT/Dues In/Dues Out kosong).';
         return;
       }
       rawData = classP.map(r => ({
@@ -2771,11 +2762,11 @@ function processFile(file) {
           status.textContent = `⚠ Data tersimpan, tapi ada ${dupCodes.length} Stock Code duplikat di warehouse "${currentWarehouse}" (tidak digabung, tetap tampil sebagai baris terpisah): ${dupCodes.slice(0,10).join(', ')}${dupCodes.length>10?', ...':''}`;
         } else {
           status.style.color = '#22c55e';
-          status.textContent = `✅ ${classP.length} item Class P (semua warehouse) berhasil diupdate dari: ${file.name}. Menampilkan ${allData.length} item untuk warehouse "${currentWarehouse}".`;
+          status.textContent = `✅ ${classP.length} item (semua Class, semua warehouse) berhasil diupdate dari: ${file.name}. Menampilkan ${allData.length} item untuk warehouse "${currentWarehouse}".`;
         }
       } else {
         status.style.color='#22c55e';
-        status.textContent = `✅ ${classP.length} item Class P berhasil diupdate dari: ${file.name} (lokal saja — hubungkan database agar tersimpan untuk semua user, klik "Setup Database")`;
+        status.textContent = `✅ ${classP.length} item berhasil diupdate dari: ${file.name} (lokal saja — hubungkan database agar tersimpan untuk semua user, klik "Setup Database")`;
         if (dupCodes.length) {
           status.style.color = '#F2A33C';
           status.textContent += ` — ⚠ ${dupCodes.length} Stock Code duplikat ditemukan: ${dupCodes.slice(0,10).join(', ')}${dupCodes.length>10?', ...':''}`;
