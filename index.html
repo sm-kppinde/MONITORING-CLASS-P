@@ -1371,6 +1371,10 @@
 
   <div class="toolbar" style="margin:16px 28px 0">
     <input type="text" class="search-box" id="wrSearchBox" placeholder="🔍 Cari WR No, Stock Code, Equip No, Item Name..." oninput="applyWrFilters()">
+    <select class="filter-sel" id="wrFilterMnemonic" onchange="applyWrFilters()"><option value="all">Semua Mnemonic</option></select>
+    <select class="filter-sel" id="wrFilterWarehouse" onchange="applyWrFilters()"><option value="all">Semua Warehouse</option></select>
+    <select class="filter-sel" id="wrFilterClass" onchange="applyWrFilters()"><option value="all">Semua Class</option></select>
+    <select class="filter-sel" id="wrFilterRemark" onchange="applyWrFilters()"><option value="all">Semua Remark</option><option value="Ready Posting">Ready Posting</option><option value="Not Ready Posting">Not Ready Posting</option></select>
     <button class="btn-print" id="wrTrendToggleBtn" onclick="toggleWrTrendChart()"><svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Tampilkan Trend</button>
     <button class="btn-export" onclick="exportWrExcel()">⬇ Export Excel</button>
   </div>
@@ -3389,8 +3393,30 @@ function setWrDbStatus(state, text) {
   txt.textContent = text;
 }
 
+function buildWrFilterOptions() {
+  const mnSel = document.getElementById('wrFilterMnemonic');
+  const whSel = document.getElementById('wrFilterWarehouse');
+  const clsSel = document.getElementById('wrFilterClass');
+  if (!mnSel || !whSel || !clsSel) return;
+  const mnPrev = mnSel.value, whPrev = whSel.value, clsPrev = clsSel.value;
+  const mnemonics = [...new Set(wrData.map(r => String(r['MNEMONIC CURRENT']||'').trim()).filter(Boolean))].sort();
+  const warehouses = [...new Set(wrData.map(r => String(r['WH']||'').trim()).filter(Boolean))].sort();
+  const classes = [...new Set(wrData.map(r => String(r['CURRENT CLASS']||'').trim().toUpperCase()).filter(Boolean))].sort();
+  mnSel.innerHTML = '<option value="all">Semua Mnemonic</option>' + mnemonics.map(m => `<option value="${m}">${m}</option>`).join('');
+  whSel.innerHTML = '<option value="all">Semua Warehouse</option>' + warehouses.map(w => `<option value="${w}">${w}</option>`).join('');
+  clsSel.innerHTML = '<option value="all">Semua Class</option>' + classes.map(c => `<option value="${c}">${c}</option>`).join('');
+  if (mnemonics.includes(mnPrev)) mnSel.value = mnPrev;
+  if (warehouses.includes(whPrev)) whSel.value = whPrev;
+  if (classes.includes(clsPrev)) clsSel.value = clsPrev;
+}
+
 function applyWrFilters() {
+  buildWrFilterOptions();
   const q = (document.getElementById('wrSearchBox').value || '').toLowerCase().trim();
+  const fMnemonic = document.getElementById('wrFilterMnemonic')?.value || 'all';
+  const fWarehouse = document.getElementById('wrFilterWarehouse')?.value || 'all';
+  const fClass = document.getElementById('wrFilterClass')?.value || 'all';
+  const fRemark = document.getElementById('wrFilterRemark')?.value || 'all';
   // Hitung ulang alokasi FIFO setiap kali filter diterapkan agar selalu sinkron dengan SOH terbaru
   wrRemarkById = computeWrRemarks();
   // Perkaya setiap baris dengan Price, Amount Price, SOH WH & Remark
@@ -3421,6 +3447,18 @@ function applyWrFilters() {
       String(r['MNEMONIC CURRENT']||'').toLowerCase().includes(q) ||
       String(r['PN CURRENT']||'').toLowerCase().includes(q)
     );
+  }
+  if (fMnemonic !== 'all') {
+    data = data.filter(r => String(r['MNEMONIC CURRENT']||'').trim() === fMnemonic);
+  }
+  if (fWarehouse !== 'all') {
+    data = data.filter(r => String(r['WH']||'').trim() === fWarehouse);
+  }
+  if (fClass !== 'all') {
+    data = data.filter(r => String(r['CURRENT CLASS']||'').trim().toUpperCase() === fClass);
+  }
+  if (fRemark !== 'all') {
+    data = data.filter(r => r['REMARK'] === fRemark);
   }
   updateWrSummary(data);
   updateWrAgingSummary(data);
