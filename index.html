@@ -449,6 +449,13 @@
   #wrAgingRow .kpi-sub { display: none; }
   #wrSummaryStrip .kpi-amount, #wrAgingRow .kpi-amount { font-size: 12.5px; margin-top: 6px; padding-top: 6px; }
   #wrSummaryStrip .kpi-amount::before, #wrAgingRow .kpi-amount::before { font-size: 8.5px; margin-bottom: 1px; }
+  #wrSectionRow { gap: 10px; }
+  #wrSectionRow .kpi-card { padding: 11px 13px; cursor: pointer; }
+  #wrSectionRow .kpi-icon-badge { width: 22px; height: 22px; border-radius: 7px; margin-bottom: 6px; }
+  #wrSectionRow .kpi-icon-badge svg { width: 12px; height: 12px; }
+  #wrSectionRow .kpi-value { font-size: 16px; margin-top: 2px; }
+  #wrSectionRow .kpi-amount { font-size: 11.5px; margin-top: 6px; padding-top: 6px; }
+  #wrSectionRow .kpi-amount::before { font-size: 8.5px; margin-bottom: 1px; }
 
   /* Summary strip */
   .summary-strip {
@@ -1329,6 +1336,7 @@
     <span style="margin-left:auto" id="wrRecordCount">0 record</span>
   </div>
 
+  <div id="wrStandardKpiGroup">
   <div class="kpi-row" id="wrSummaryStrip" style="grid-template-columns:repeat(3,1fr);margin:16px 28px 0">
     <div class="kpi-card green" id="wrCardReady" onclick="quickFilterWrRemark('ready')" title="Klik untuk filter">
       <div class="kpi-icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 5-5"/></svg></div>
@@ -1379,6 +1387,11 @@
       <div class="kpi-value" id="wrAging90upCount">—</div>
       <div class="kpi-amount" id="wrAging90upAmt">—</div>
     </div>
+  </div>
+  </div>
+
+  <div id="wrSectionKpiGroup" style="display:none">
+    <div class="kpi-row" id="wrSectionRow" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin:16px 28px 0"></div>
   </div>
 
   <div class="toolbar" style="margin:16px 28px 0">
@@ -1805,6 +1818,12 @@ function parseDateFlexible(v) {
   if (v === null || v === undefined || v === '') return null;
   if (v instanceof Date) return isNaN(v) ? null : v;
   if (typeof v === 'number') {
+    // Format YYYYMMDD sebagai angka murni (mis. 20250417) -> BUKAN kode tanggal Excel
+    if (v >= 19000101 && v <= 21001231) {
+      const s = String(v);
+      const y = +s.slice(0,4), mo = +s.slice(4,6), d = +s.slice(6,8);
+      if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) return new Date(y, mo-1, d);
+    }
     // Excel serial date (epoch 1899-12-30)
     const utcDays = Math.floor(v - 25569);
     const d = new Date(utcDays * 86400 * 1000);
@@ -3046,6 +3065,7 @@ function resetWrFilters() {
   if (remarkSel) remarkSel.value = 'all';
   wrRemarkFilter = 'all';
   wrAgingFilter = 'all';
+  wrSectionFilter = 'all';
   wrPage = 1;
   updateWrCardActiveState();
   updateWrAgingCardActiveState();
@@ -3517,6 +3537,7 @@ let wrSortKey = null;
 let wrSortDir = 1;
 let wrRemarkFilter = 'all'; // 'all' | 'ready' | 'ready_partial' | 'not_ready'
 let wrAgingFilter = 'all'; // 'all' | '0-30' | '31-60' | '61-90' | '90 UP'
+let wrSectionFilter = 'all'; // 'all' | <nama section> — hanya dipakai saat warehouse VHS aktif
 
 function quickFilterWrRemark(type) {
   wrRemarkFilter = (wrRemarkFilter === type) ? 'all' : type;
@@ -3565,6 +3586,48 @@ function updateWrAgingSummary(data) {
   });
 }
 
+const SECTION_CARD_COLORS = ['blue','green','amber','purple','red','teal','cyan'];
+function updateWrSectionSummary(data) {
+  const isVhs = VHS_CODES.includes(currentWarehouse);
+  const standardGroup = document.getElementById('wrStandardKpiGroup');
+  const sectionGroup = document.getElementById('wrSectionKpiGroup');
+  const sectionRow = document.getElementById('wrSectionRow');
+  if (!standardGroup || !sectionGroup || !sectionRow) return;
+  if (!isVhs) {
+    standardGroup.style.display = '';
+    sectionGroup.style.display = 'none';
+    return;
+  }
+  standardGroup.style.display = 'none';
+  sectionGroup.style.display = '';
+
+  const bySection = {};
+  data.forEach(r => {
+    const sec = String(r['SECTION']||'').trim() || 'Tanpa Section';
+    if (!bySection[sec]) bySection[sec] = { count: 0, amt: 0 };
+    bySection[sec].count += 1;
+    bySection[sec].amt += (r['AMOUNT PRICE']||0);
+  });
+  const sections = Object.keys(bySection).sort((a,b) => bySection[b].count - bySection[a].count);
+
+  sectionRow.innerHTML = sections.map((sec, i) => {
+    const color = SECTION_CARD_COLORS[i % SECTION_CARD_COLORS.length];
+    const activeCls = wrSectionFilter === sec ? 'active-filter' : '';
+    return `<div class="kpi-card ${color} ${activeCls}" onclick="quickFilterWrSection('${sec.replace(/'/g,"\\'")}')" title="Klik untuk filter">
+      <div class="kpi-icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
+      <div class="kpi-label">${sec}</div>
+      <div class="kpi-value">${bySection[sec].count.toLocaleString('id-ID')} item</div>
+      <div class="kpi-amount">${fmtRp(bySection[sec].amt)}</div>
+    </div>`;
+  }).join('');
+}
+
+function quickFilterWrSection(sec) {
+  wrSectionFilter = (wrSectionFilter === sec) ? 'all' : sec;
+  wrPage = 1;
+  applyWrFilters();
+}
+
 function renderWrFilterBar() {
   const bar = document.getElementById('wrFilterActiveBar');
   if (!bar) return;
@@ -3586,6 +3649,11 @@ function renderWrFilterBar() {
     html += `${html ? '' : '<span style="font-size:11.5px;color:var(--text-muted)">Filter:</span>'}
       <span class="aging-tag ${agingClsMap[wrAgingFilter]}">Aging ${wrAgingFilter}</span>
       <button onclick="quickFilterWrAging('${wrAgingFilter}')" class="filter-clear-btn">✕</button>`;
+  }
+  if (wrSectionFilter !== 'all') {
+    html += `${html ? '' : '<span style="font-size:11.5px;color:var(--text-muted)">Filter:</span>'}
+      <span class="remark-tag remark-partial">Section: ${wrSectionFilter}</span>
+      <button onclick="quickFilterWrSection('${wrSectionFilter.replace(/'/g,"\\'")}')" class="filter-clear-btn">✕</button>`;
   }
   bar.innerHTML = html;
 }
@@ -3667,6 +3735,7 @@ function applyWrFilters() {
   }
   updateWrSummary(data);
   updateWrAgingSummary(data);
+  updateWrSectionSummary(data);
 
   if (wrRemarkFilter === 'ready') {
     data = data.filter(r => r['REMARK'] === 'Ready Posting');
@@ -3678,6 +3747,10 @@ function applyWrFilters() {
 
   if (wrAgingFilter !== 'all') {
     data = data.filter(r => r['AGING'] === wrAgingFilter);
+  }
+
+  if (wrSectionFilter !== 'all') {
+    data = data.filter(r => (String(r['SECTION']||'').trim() || 'Tanpa Section') === wrSectionFilter);
   }
 
   if (wrSortKey === 'AUTHSD DATE') {
