@@ -699,6 +699,7 @@
   .remark-ready   { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
   .remark-partial { background: var(--amber-glow); color: var(--amber); border: 1px solid rgba(242,163,60,0.3); }
   .remark-notready{ background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+  .remark-partial { background: rgba(242,163,60,0.15); color: var(--amber); border: 1px solid rgba(242,163,60,0.3); }
 
   .aging-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 10px; white-space: nowrap; }
   .aging-tag::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
@@ -1325,18 +1326,18 @@
       <div class="kpi-sub">Stok cukup untuk memenuhi WR (FIFO berdasarkan tanggal)</div>
       <div class="kpi-amount" id="wrScReadyAmt">—</div>
     </div>
-    <div class="kpi-card red" id="wrCardNotReadySoh" onclick="quickFilterWrRemark('not_ready_soh')" title="Klik untuk filter">
-      <div class="kpi-icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L2 20h20L12 3z"/><path d="M12 10v4"/><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/></svg></div>
-      <div class="kpi-label">Not Ready Posting (SOH WH &gt; 0)</div>
-      <div class="kpi-value" id="wrScNotReadySohCount">—</div>
-      <div class="kpi-sub">Ada stok fisik, tapi sudah terpakai WR lain yang lebih lama</div>
-      <div class="kpi-amount" id="wrScNotReadySohAmt">—</div>
+    <div class="kpi-card amber" id="wrCardReadyPartial" onclick="quickFilterWrRemark('ready_partial')" title="Klik untuk filter">
+      <div class="kpi-icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10"/></svg></div>
+      <div class="kpi-label">Ready Partial</div>
+      <div class="kpi-value" id="wrScReadyPartialCount">—</div>
+      <div class="kpi-sub">Masih ada sisa stok, tapi kurang dari QTY REQ (partial)</div>
+      <div class="kpi-amount" id="wrScReadyPartialAmt">—</div>
     </div>
-    <div class="kpi-card purple" id="wrCardNotReadyZero" onclick="quickFilterWrRemark('not_ready_zero')" title="Klik untuk filter">
+    <div class="kpi-card purple" id="wrCardNotReadyZero" onclick="quickFilterWrRemark('not_ready')" title="Klik untuk filter">
       <div class="kpi-icon-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 8l8 8M16 8l-8 8"/></svg></div>
-      <div class="kpi-label">Not Ready Posting (SOH = 0)</div>
+      <div class="kpi-label">Not Ready Posting</div>
       <div class="kpi-value" id="wrScNotReadyZeroCount">—</div>
-      <div class="kpi-sub">Stok fisik memang tidak ada sama sekali</div>
+      <div class="kpi-sub">Tidak ada sisa stok untuk memenuhi WR ini sama sekali</div>
       <div class="kpi-amount" id="wrScNotReadyZeroAmt">—</div>
     </div>
   </div>
@@ -1374,7 +1375,7 @@
     <select class="filter-sel" id="wrFilterMnemonic" onchange="applyWrFilters()"><option value="all">Semua Mnemonic</option></select>
     <select class="filter-sel" id="wrFilterWarehouse" onchange="applyWrFilters()"><option value="all">Semua Warehouse</option></select>
     <select class="filter-sel" id="wrFilterClass" onchange="applyWrFilters()"><option value="all">Semua Class</option></select>
-    <select class="filter-sel" id="wrFilterRemark" onchange="applyWrFilters()"><option value="all">Semua Remark</option><option value="Ready Posting">Ready Posting</option><option value="Not Ready Posting">Not Ready Posting</option></select>
+    <select class="filter-sel" id="wrFilterRemark" onchange="applyWrFilters()"><option value="all">Semua Remark</option><option value="Ready Posting">Ready Posting</option><option value="Ready Partial">Ready Partial</option><option value="Not Ready Posting">Not Ready Posting</option></select>
     <button class="btn-print" id="wrTrendToggleBtn" onclick="toggleWrTrendChart()"><svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Tampilkan Trend</button>
     <button class="btn-export" onclick="exportWrExcel()">⬇ Export Excel</button>
   </div>
@@ -1645,16 +1646,18 @@ async function saveWrDailySnapshot() {
     });
 
     const readyRows = enriched.filter(r => r.remark === 'Ready Posting');
-    const notReadySohRows = enriched.filter(r => r.remark === 'Not Ready Posting' && r.sohWh > 0);
-    const notReadyZeroRows = enriched.filter(r => r.remark === 'Not Ready Posting' && r.sohWh === 0);
+    const readyPartialRows = enriched.filter(r => r.remark === 'Ready Partial');
+    const notReadyRows = enriched.filter(r => r.remark === 'Not Ready Posting');
 
     const sumAmount = arr => arr.reduce((s,r) => s + (r.amountPrice||0), 0);
 
     const snapshot = {
       snapshot_date: dateStr,
       ready_amount: sumAmount(readyRows), ready_cnt: readyRows.length,
-      not_ready_soh_amount: sumAmount(notReadySohRows), not_ready_soh_cnt: notReadySohRows.length,
-      not_ready_zero_amount: sumAmount(notReadyZeroRows), not_ready_zero_cnt: notReadyZeroRows.length,
+      // Kolom DB "not_ready_soh_*" dipakai untuk menyimpan kategori "Ready Partial" (reuse kolom lama)
+      not_ready_soh_amount: sumAmount(readyPartialRows), not_ready_soh_cnt: readyPartialRows.length,
+      // Kolom DB "not_ready_zero_*" dipakai untuk menyimpan kategori "Not Ready Posting"
+      not_ready_zero_amount: sumAmount(notReadyRows), not_ready_zero_cnt: notReadyRows.length,
     };
 
     await supaFetch('wr_daily_snapshot?on_conflict=snapshot_date', {
@@ -1844,7 +1847,10 @@ function computeWrRemarks() {
         status = 'Ready Posting';
         remaining -= qty;
       } else {
-        status = 'Not Ready Posting';
+        // Masih ada sisa SOH (setelah dipakai WR yang lebih dulu antre), tapi sisa itu
+        // kurang dari QTY REQ WR ini -> tidak bisa dipenuhi penuh, tapi ada sebagian stok (Partial)
+        status = 'Ready Partial';
+        remaining = 0;
       }
       map[w['ID']] = status;
     });
@@ -3091,8 +3097,8 @@ function renderWrTrendChart() {
   const theme = getTrendChartTheme();
   const datasets = [
     { label: 'Ready Posting', data: data.map(s => Number(s.ready_amount)||0), color: '#22c55e' },
-    { label: 'Not Ready (SOH WH > 0)', data: data.map(s => Number(s.not_ready_soh_amount)||0), color: '#ef4444' },
-    { label: 'Not Ready (SOH = 0)', data: data.map(s => Number(s.not_ready_zero_amount)||0), color: '#a855f7' },
+    { label: 'Ready Partial', data: data.map(s => Number(s.not_ready_soh_amount)||0), color: '#F2A33C' },
+    { label: 'Not Ready Posting', data: data.map(s => Number(s.not_ready_zero_amount)||0), color: '#a855f7' },
   ];
 
   if (wrTrendChartInstance) { wrTrendChartInstance.destroy(); wrTrendChartInstance = null; }
@@ -3310,7 +3316,7 @@ let wrPage = 1;
 let WR_PAGE_SIZE = 50;
 let wrSortKey = null;
 let wrSortDir = 1;
-let wrRemarkFilter = 'all'; // 'all' | 'ready' | 'not_ready_soh' | 'not_ready_zero'
+let wrRemarkFilter = 'all'; // 'all' | 'ready' | 'ready_partial' | 'not_ready'
 let wrAgingFilter = 'all'; // 'all' | '0-30' | '31-60' | '61-90' | '90 UP'
 
 function quickFilterWrRemark(type) {
@@ -3328,7 +3334,7 @@ function quickFilterWrAging(bucket) {
 }
 
 function updateWrCardActiveState() {
-  const map = { ready: 'wrCardReady', not_ready_soh: 'wrCardNotReadySoh', not_ready_zero: 'wrCardNotReadyZero' };
+  const map = { ready: 'wrCardReady', ready_partial: 'wrCardReadyPartial', not_ready: 'wrCardNotReadyZero' };
   Object.keys(map).forEach(key => {
     const el = document.getElementById(map[key]);
     if (el) el.classList.toggle('active-filter', wrRemarkFilter === key);
@@ -3365,8 +3371,8 @@ function renderWrFilterBar() {
   if (!bar) return;
   const remarkLabels = {
     ready: { text: 'Ready Posting', cls: 'remark-ready' },
-    not_ready_soh: { text: 'Not Ready Posting (SOH WH > 0)', cls: 'remark-notready' },
-    not_ready_zero: { text: 'Not Ready Posting (SOH = 0)', cls: 'remark-notready' },
+    ready_partial: { text: 'Ready Partial', cls: 'remark-partial' },
+    not_ready: { text: 'Not Ready Posting', cls: 'remark-notready' },
   };
   const agingClsMap = { '0-30': 'aging-030', '31-60': 'aging-3160', '61-90': 'aging-6190', '90 UP': 'aging-90up' };
 
@@ -3427,7 +3433,7 @@ function applyWrFilters() {
     const qtyReq = r['QTY REQ'] || 0;
     const amountPrice = price * qtyReq;
     const remarkLabel = wrRemarkById[r['ID']] || 'Not Ready Posting';
-    const remarkCls = remarkLabel === 'Ready Posting' ? 'remark-ready' : 'remark-notready';
+    const remarkCls = remarkLabel === 'Ready Posting' ? 'remark-ready' : remarkLabel === 'Ready Partial' ? 'remark-partial' : 'remark-notready';
     const dateTs = getDateTs(r['AUTHSD DATE']);
     const ltPosting = isFinite(dateTs) ? Math.floor((Date.now() - dateTs) / 86400000) : null;
     let aging, agingCls;
@@ -3465,10 +3471,10 @@ function applyWrFilters() {
 
   if (wrRemarkFilter === 'ready') {
     data = data.filter(r => r['REMARK'] === 'Ready Posting');
-  } else if (wrRemarkFilter === 'not_ready_soh') {
-    data = data.filter(r => r['REMARK'] === 'Not Ready Posting' && (r['SOH WH']||0) > 0);
-  } else if (wrRemarkFilter === 'not_ready_zero') {
-    data = data.filter(r => r['REMARK'] === 'Not Ready Posting' && (r['SOH WH']||0) === 0);
+  } else if (wrRemarkFilter === 'ready_partial') {
+    data = data.filter(r => r['REMARK'] === 'Ready Partial');
+  } else if (wrRemarkFilter === 'not_ready') {
+    data = data.filter(r => r['REMARK'] === 'Not Ready Posting');
   }
 
   if (wrAgingFilter !== 'all') {
@@ -3497,25 +3503,25 @@ function applyWrFilters() {
 
 function updateWrSummary(data) {
   const readyRows = data.filter(r => r['REMARK'] === 'Ready Posting');
-  const notReadySohRows = data.filter(r => r['REMARK'] === 'Not Ready Posting' && (r['SOH WH']||0) > 0);
-  const notReadyZeroRows = data.filter(r => r['REMARK'] === 'Not Ready Posting' && (r['SOH WH']||0) === 0);
+  const readyPartialRows = data.filter(r => r['REMARK'] === 'Ready Partial');
+  const notReadyRows = data.filter(r => r['REMARK'] === 'Not Ready Posting');
 
   const readyAmt = readyRows.reduce((s,r) => s + (r['AMOUNT PRICE']||0), 0);
-  const notReadySohAmt = notReadySohRows.reduce((s,r) => s + (r['AMOUNT PRICE']||0), 0);
-  const notReadyZeroAmt = notReadyZeroRows.reduce((s,r) => s + (r['AMOUNT PRICE']||0), 0);
+  const readyPartialAmt = readyPartialRows.reduce((s,r) => s + (r['AMOUNT PRICE']||0), 0);
+  const notReadyAmt = notReadyRows.reduce((s,r) => s + (r['AMOUNT PRICE']||0), 0);
 
   const elCount = document.getElementById('wrScReadyCount');
   const elAmt = document.getElementById('wrScReadyAmt');
-  const elNrCount = document.getElementById('wrScNotReadySohCount');
-  const elNrAmt = document.getElementById('wrScNotReadySohAmt');
+  const elNrCount = document.getElementById('wrScReadyPartialCount');
+  const elNrAmt = document.getElementById('wrScReadyPartialAmt');
   const elNzCount = document.getElementById('wrScNotReadyZeroCount');
   const elNzAmt = document.getElementById('wrScNotReadyZeroAmt');
   if (elCount) elCount.textContent = readyRows.length.toLocaleString('id-ID') + ' item';
   if (elAmt) elAmt.textContent = fmtRp(readyAmt);
-  if (elNrCount) elNrCount.textContent = notReadySohRows.length.toLocaleString('id-ID') + ' item';
-  if (elNrAmt) elNrAmt.textContent = fmtRp(notReadySohAmt);
-  if (elNzCount) elNzCount.textContent = notReadyZeroRows.length.toLocaleString('id-ID') + ' item';
-  if (elNzAmt) elNzAmt.textContent = fmtRp(notReadyZeroAmt);
+  if (elNrCount) elNrCount.textContent = readyPartialRows.length.toLocaleString('id-ID') + ' item';
+  if (elNrAmt) elNrAmt.textContent = fmtRp(readyPartialAmt);
+  if (elNzCount) elNzCount.textContent = notReadyRows.length.toLocaleString('id-ID') + ' item';
+  if (elNzAmt) elNzAmt.textContent = fmtRp(notReadyAmt);
 }
 
 function sortWrTable(key) {
@@ -3562,7 +3568,7 @@ function renderWrTable() {
       <td class="num">Rp ${fmtRpFull(r['PRICE']||0)}</td>
       <td class="num">Rp ${fmtRpFull(r['AMOUNT PRICE']||0)}</td>
       <td style="text-align:center">${r['SOH WH']||0}</td>
-      <td style="text-align:center"><span class="remark-tag ${r['_remarkCls']} clickable" onclick="event.stopPropagation(); quickFilterWrRemark('${r['SOH WH']>0 && r['REMARK']==='Not Ready Posting' ? 'not_ready_soh' : r['REMARK']==='Ready Posting' ? 'ready' : 'not_ready_zero'}')" title="Klik untuk filter">${r['REMARK']}</span></td>
+      <td style="text-align:center"><span class="remark-tag ${r['_remarkCls']} clickable" onclick="event.stopPropagation(); quickFilterWrRemark('${r['REMARK']==='Ready Posting' ? 'ready' : r['REMARK']==='Ready Partial' ? 'ready_partial' : 'not_ready'}')" title="Klik untuk filter">${r['REMARK']}</span></td>
     </tr>`;
     }).join('');
   }
