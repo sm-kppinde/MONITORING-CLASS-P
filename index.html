@@ -1401,23 +1401,25 @@
       <table id="wrTable">
         <thead>
           <tr>
-            <th onclick="sortWrTable('AGING')">Aging <span class="sort-icon"></span></th>
-            <th onclick="sortWrTable('LT POSTING')">LT Posting <span class="sort-icon"></span></th>
-            <th onclick="sortWrTable('AUTHSD DATE')">Authsd Date <span class="sort-icon"></span></th>
+            <th onclick="sortWrTable('WH')">Whouse ID <span class="sort-icon"></span></th>
             <th onclick="sortWrTable('WR NO')">WR No <span class="sort-icon"></span></th>
             <th onclick="sortWrTable('WR ITEM')">WR Item <span class="sort-icon"></span></th>
+            <th onclick="sortWrTable('CURRENT CLASS')">Class <span class="sort-icon"></span></th>
             <th onclick="sortWrTable('STOCK CODE')">Stock Code <span class="sort-icon"></span></th>
             <th onclick="sortWrTable('ITEM NAME')">Item Name <span class="sort-icon"></span></th>
-            <th onclick="sortWrTable('CURRENT CLASS')">Current Class <span class="sort-icon"></span></th>
-            <th onclick="sortWrTable('MNEMONIC CURRENT')">Mnemonic Current <span class="sort-icon"></span></th>
             <th onclick="sortWrTable('PN CURRENT')">PN Current <span class="sort-icon"></span></th>
-            <th onclick="sortWrTable('WH')">WH <span class="sort-icon"></span></th>
-            <th onclick="sortWrTable('UOI')">UOI <span class="sort-icon"></span></th>
+            <th onclick="sortWrTable('MNEMONIC CURRENT')">Mnemonic Current <span class="sort-icon"></span></th>
+            <th onclick="sortWrTable('EQUIP NO')">Equipment No <span class="sort-icon"></span></th>
             <th onclick="sortWrTable('QTY REQ')" style="text-align:right">Qty Req <span class="sort-icon"></span></th>
-            <th onclick="sortWrTable('PRICE')" style="text-align:right">Price <span class="sort-icon"></span></th>
-            <th onclick="sortWrTable('AMOUNT PRICE')" style="text-align:right">Amount Price <span class="sort-icon"></span></th>
-            <th onclick="sortWrTable('SOH WH')" style="text-align:right">SOH WH <span class="sort-icon"></span></th>
+            <th onclick="sortWrTable('TOTAL ISSUED')" style="text-align:right">Total Issued <span class="sort-icon"></span></th>
+            <th onclick="sortWrTable('LT POSTING')">LT Posting <span class="sort-icon"></span></th>
+            <th onclick="sortWrTable('AGING')">Aging Groub <span class="sort-icon"></span></th>
+            <th onclick="sortWrTable('SECTION')">Section <span class="sort-icon"></span></th>
+            <th onclick="sortWrTable('PRICE')" style="text-align:right">Issuing Price <span class="sort-icon"></span></th>
+            <th onclick="sortWrTable('ESTIMASI SUPPLY')">Estimasi Supply <span class="sort-icon"></span></th>
+            <th onclick="sortWrTable('KE VENDOR')">Ke Vendor <span class="sort-icon"></span></th>
             <th onclick="sortWrTable('REMARK')">Remark <span class="sort-icon"></span></th>
+            <th onclick="sortWrTable('KET 2')">Ket 2 <span class="sort-icon"></span></th>
           </tr>
         </thead>
         <tbody id="wrTableBody"></tbody>
@@ -1900,6 +1902,12 @@ async function loadWrFromDb() {
       'UOI': r.uoi || '',
       'QTY REQ': Number(r.qty_req) || 0,
       'SOH WH': Number(r.soh_wh) || 0,
+      'TOTAL ISSUED': Number(r.total_issued) || 0,
+      'SECTION': r.section || '',
+      'ESTIMASI SUPPLY': r.estimasi_supply || '',
+      'KE VENDOR': r.ke_vendor || '',
+      'KET 2': r.ket2 || '',
+      'ISSUING PRICE': Number(r.issuing_price) || 0,
     }));
     rawWrData = wrData;
     wrData = filterByWarehouse(rawWrData, currentWarehouse);
@@ -1938,6 +1946,12 @@ async function saveWrToDb(rows, filename) {
       uoi: r['UOI'] || '',
       qty_req: r['QTY REQ'] || 0,
       soh_wh: r['SOH WH'] || 0,
+      total_issued: r['TOTAL ISSUED'] || 0,
+      section: r['SECTION'] || '',
+      estimasi_supply: r['ESTIMASI SUPPLY'] || '',
+      ke_vendor: r['KE VENDOR'] || '',
+      ket2: r['KET 2'] || '',
+      issuing_price: r['ISSUING PRICE'] || 0,
     }));
 
     for (let i = 0; i < payload.length; i += batchSize) {
@@ -1997,6 +2011,12 @@ function processWrFile(file) {
       const colUoi        = findCol('UOI','UOM','Unit');
       const colQtyReq     = findCol('QTY REQ','Qty Req','Quantity Req','QTY REQUEST','Qty Request');
       const colSohWh      = findCol('SOH WH','SOH_WH','Soh Wh');
+      const colTotalIssued= findCol('TOTAL ISSUED','Total Issued');
+      const colSection    = findCol('SECTION','Section');
+      const colEstSupply  = findCol('ESTIMASI SUPPLY','Estimasi Supply');
+      const colKeVendor   = findCol('KE VENDOR','FB VENDOR','Ke Vendor','Fb Vendor');
+      const colKet2       = findCol('KET 2','KET2','Ket 2');
+      const colIssuingPrice = findCol('ISSUING PRICE','Issuing Price');
 
       if (!colStockCode) {
         status.style.color='#ef4444';
@@ -2021,6 +2041,12 @@ function processWrFile(file) {
           'UOI': colUoi ? String(r[colUoi]||'').trim() : '',
           'QTY REQ': colQtyReq ? parseFloat(r[colQtyReq]||0) : 0,
           'SOH WH': colSohWh ? parseFloat(r[colSohWh]||0) : 0,
+          'TOTAL ISSUED': colTotalIssued ? parseFloat(r[colTotalIssued]||0) : 0,
+          'SECTION': colSection ? String(r[colSection]||'').trim() : '',
+          'ESTIMASI SUPPLY': colEstSupply ? String(r[colEstSupply]||'').trim() : '',
+          'KE VENDOR': colKeVendor ? String(r[colKeVendor]||'').trim() : '',
+          'KET 2': colKet2 ? String(r[colKet2]||'').trim() : '',
+          'ISSUING PRICE': colIssuingPrice ? parseFloat(r[colIssuingPrice]||0) : 0,
         }));
       if (!rows.length) { status.style.color='#ef4444'; status.textContent='⚠ Tidak ada baris dengan Stock Code terisi di file ini.'; return; }
 
@@ -2734,6 +2760,12 @@ function processWrVhsFile(file) {
       const colUoi        = findCol('UOI','UOM','Unit');
       const colQtyReq     = findCol('QTY REQ','Qty Req');
       const colSohWh      = findCol('SOH WH','SOH_WH','Soh Wh');
+      const colTotalIssued= findCol('TOTAL ISSUED','Total Issued');
+      const colSection    = findCol('SECTION','Section');
+      const colEstSupply  = findCol('ESTIMASI SUPPLY','Estimasi Supply');
+      const colKeVendor   = findCol('KE VENDOR','FB VENDOR','Ke Vendor','Fb Vendor');
+      const colKet2       = findCol('KET 2','KET2','Ket 2');
+      const colIssuingPrice = findCol('ISSUING PRICE','Issuing Price');
 
       if (!colStockCode) {
         status.style.color='#ef4444';
@@ -2763,6 +2795,12 @@ function processWrVhsFile(file) {
           'UOI': colUoi ? String(r[colUoi]||'').trim() : '',
           'QTY REQ': colQtyReq ? parseFloat(r[colQtyReq]||0) : 0,
           'SOH WH': colSohWh ? parseFloat(r[colSohWh]||0) : 0,
+          'TOTAL ISSUED': colTotalIssued ? parseFloat(r[colTotalIssued]||0) : 0,
+          'SECTION': colSection ? String(r[colSection]||'').trim() : '',
+          'ESTIMASI SUPPLY': colEstSupply ? String(r[colEstSupply]||'').trim() : '',
+          'KE VENDOR': colKeVendor ? String(r[colKeVendor]||'').trim() : '',
+          'KET 2': colKet2 ? String(r[colKet2]||'').trim() : '',
+          'ISSUING PRICE': colIssuingPrice ? parseFloat(r[colIssuingPrice]||0) : 0,
         }));
       if (!parsed.length) { status.style.color='#ef4444'; status.textContent='⚠ Tidak ada baris dengan Stock Code terisi di file ini.'; return; }
 
@@ -3589,7 +3627,7 @@ function applyWrFilters() {
   // Perkaya setiap baris dengan Price, Amount Price, SOH WH & Remark
   let data = wrData.map(r => {
     const sohWh = getSohWh(r['STOCK CODE']);
-    const price = getPrice(r['STOCK CODE']);
+    const price = (r['ISSUING PRICE'] > 0) ? r['ISSUING PRICE'] : getPrice(r['STOCK CODE']);
     const uoi = getUoi(r['STOCK CODE']);
     const qtyReq = r['QTY REQ'] || 0;
     const amountPrice = price * qtyReq;
@@ -3709,27 +3747,29 @@ function renderWrTable() {
   const rows = wrFiltered.slice(start, start + WR_PAGE_SIZE);
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="17"><div class="no-data"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:40px;height:40px"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg></div><div>Tidak ada data ditemukan</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="19"><div class="no-data"><div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:40px;height:40px"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg></div><div>Tidak ada data ditemukan</div></div></td></tr>`;
   } else {
     tbody.innerHTML = rows.map(r => {
       return `<tr>
-      <td style="text-align:center"><span class="aging-tag ${r['_agingCls']}">${r['AGING']}</span></td>
-      <td style="text-align:center;color:${r['LT POSTING']===null?'var(--text-muted)':r['LT POSTING']>60?'var(--red)':r['LT POSTING']>30?'var(--amber)':'var(--text-dim)'}">${r['LT POSTING']===null?'—':r['LT POSTING']+'d'}</td>
-      <td style="text-align:center">${formatDateDDMMYY(r['AUTHSD DATE'])}</td>
+      <td style="text-align:center">${r['WH']||'—'}</td>
       <td style="text-align:center;color:var(--teal);font-weight:600">${r['WR NO']||'—'}</td>
       <td style="text-align:center">${r['WR ITEM']||'—'}</td>
+      <td style="text-align:center;color:var(--amber)">${r['CURRENT CLASS']||'—'}</td>
       <td class="stock-code" style="text-align:center">${r['STOCK CODE']||'—'}</td>
       <td>${r['ITEM NAME']||'—'}</td>
-      <td style="text-align:center;color:var(--amber)">${r['CURRENT CLASS']||'—'}</td>
-      <td style="text-align:center">${r['MNEMONIC CURRENT']||'—'}</td>
       <td style="text-align:center">${r['PN CURRENT']||'—'}</td>
-      <td style="text-align:center">${r['WH']||'—'}</td>
-      <td style="text-align:center">${r['UOI']||'—'}</td>
+      <td style="text-align:center">${r['MNEMONIC CURRENT']||'—'}</td>
+      <td style="text-align:center">${r['EQUIP NO']||'—'}</td>
       <td style="text-align:center">${r['QTY REQ']||0}</td>
+      <td style="text-align:center">${r['TOTAL ISSUED']||0}</td>
+      <td style="text-align:center;color:${r['LT POSTING']===null?'var(--text-muted)':r['LT POSTING']>60?'var(--red)':r['LT POSTING']>30?'var(--amber)':'var(--text-dim)'}">${r['LT POSTING']===null?'—':r['LT POSTING']+'d'}</td>
+      <td style="text-align:center"><span class="aging-tag ${r['_agingCls']}">${r['AGING']}</span></td>
+      <td style="text-align:center">${r['SECTION']||'—'}</td>
       <td class="num">Rp ${fmtRpFull(r['PRICE']||0)}</td>
-      <td class="num">Rp ${fmtRpFull(r['AMOUNT PRICE']||0)}</td>
-      <td style="text-align:center">${r['SOH WH']||0}</td>
+      <td style="text-align:center">${r['ESTIMASI SUPPLY']||'—'}</td>
+      <td style="text-align:center">${r['KE VENDOR']||'—'}</td>
       <td style="text-align:center"><span class="remark-tag ${r['_remarkCls']} clickable" onclick="event.stopPropagation(); quickFilterWrRemark('${r['REMARK']==='Ready Posting' ? 'ready' : r['REMARK']==='Ready Partial' ? 'ready_partial' : 'not_ready'}')" title="Klik untuk filter">${r['REMARK']}</span></td>
+      <td style="text-align:center">${r['KET 2']||'—'}</td>
     </tr>`;
     }).join('');
   }
@@ -3763,27 +3803,25 @@ function wrGoToPage(p) {
 function exportWrExcel() {
   if (!wrFiltered.length) { alert('Tidak ada data WR untuk diexport.'); return; }
   const rows = wrFiltered.map(r => ({
-    'Aging': r['AGING'],
-    'LT Posting (hari)': r['LT POSTING'],
-    'Authsd Date': formatDateDDMMYY(r['AUTHSD DATE']),
-    'Equip No': r['EQUIP NO'],
+    'Whouse ID': r['WH'],
     'WR No': r['WR NO'],
     'WR Item': r['WR ITEM'],
+    'Class': r['CURRENT CLASS'],
     'Stock Code': r['STOCK CODE'],
     'Item Name': r['ITEM NAME'],
-    'Current Class': r['CURRENT CLASS'],
-    'Mnemonic Current': r['MNEMONIC CURRENT'],
     'PN Current': r['PN CURRENT'],
-    'WH': r['WH'],
-    'UOI': r['UOI'],
+    'Mnemonic Current': r['MNEMONIC CURRENT'],
+    'Equipment No': r['EQUIP NO'],
     'Qty Req': r['QTY REQ'],
-    'Price': r['PRICE'],
-    'Amount Price': r['AMOUNT PRICE'],
-    'SOH WH': r['SOH WH'],
-    'MIT': getMit(r['STOCK CODE']),
-    'Dues In': getDuesIn(r['STOCK CODE']),
+    'Total Issued': r['TOTAL ISSUED'],
+    'LT Posting (hari)': r['LT POSTING'],
+    'Aging Groub': r['AGING'],
+    'Section': r['SECTION'],
+    'Issuing Price': r['PRICE'],
+    'Estimasi Supply': r['ESTIMASI SUPPLY'],
+    'Ke Vendor': r['KE VENDOR'],
     'Remark': r['REMARK'],
-    'Expense Element': getExpenseElement(r['STOCK CODE']),
+    'Ket 2': r['KET 2'],
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
   const colWidths = Object.keys(rows[0]||{}).map(k => ({wch: Math.max(k.length, 12)}));
