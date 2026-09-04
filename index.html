@@ -2854,6 +2854,38 @@ function toggleSidebarGroup(id, btn) {
   if (el) el.classList.toggle('open');
   if (btn) btn.classList.toggle('expanded');
 }
+function resetMasterDataFilters() {
+  const searchBox = document.getElementById('searchBox');
+  if (searchBox) searchBox.value = '';
+  const statusSel = document.getElementById('filterStatus');
+  if (statusSel) statusSel.value = 'all';
+  const mitSel = document.getElementById('filterMit');
+  if (mitSel) mitSel.value = 'all';
+  const jobSel = document.getElementById('filterJobdesk');
+  if (jobSel) jobSel.value = 'all';
+  currentTab = 'all';
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{b.classList.toggle('active',i===0);});
+  document.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('active-filter'));
+}
+
+function resetWrFilters() {
+  const searchBox = document.getElementById('wrSearchBox');
+  if (searchBox) searchBox.value = '';
+  const mnSel = document.getElementById('wrFilterMnemonic');
+  if (mnSel) mnSel.value = 'all';
+  const whSel = document.getElementById('wrFilterWarehouse');
+  if (whSel) whSel.value = 'all';
+  const clsSel = document.getElementById('wrFilterClass');
+  if (clsSel) clsSel.value = 'all';
+  const remarkSel = document.getElementById('wrFilterRemark');
+  if (remarkSel) remarkSel.value = 'all';
+  wrRemarkFilter = 'all';
+  wrAgingFilter = 'all';
+  wrPage = 1;
+  updateWrCardActiveState();
+  updateWrAgingCardActiveState();
+}
+
 function selectWarehouse(wh) {
   currentWarehouse = wh;
   document.querySelectorAll('.sidebar-sub-btn').forEach(b => b.classList.toggle('active', b.dataset.wh === wh));
@@ -2861,6 +2893,8 @@ function selectWarehouse(wh) {
   wrData = filterByWarehouse(rawWrData, wh);
   buildWrIndex();
   wrRemarkById = computeWrRemarks();
+  resetMasterDataFilters();
+  resetWrFilters();
   buildGroupFilter();
   updateKPI();
   updateSummaryStrip();
