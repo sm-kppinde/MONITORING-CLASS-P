@@ -1142,6 +1142,17 @@
   <input type="file" id="wrFileInput" accept=".xlsx,.xls,.xlsm,.xlsb,.csv,.ods" onchange="handleWrFileUpload(event)">
 </div>
 <div id="wrUploadStatus"></div>
+
+<div class="upload-banner wr-vhs-upload-banner" id="wrVhsUploadBanner" onclick="document.getElementById('wrVhsFileInput').click()" style="display:none">
+  <div class="upload-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
+  <div class="upload-text">
+    <strong>Update Data OS WR VHS (khusus UTVH, HXVH, BPVH, PSVH, IMVH, TRVH, UTMS)</strong>
+    <p>Drag & drop atau klik untuk pilih file .xlsx berisi District, WHOUSE ID, WR NO, STOCK CODE, CLASS, PN Current, Mnemonic Current, SOH WH, dll (format All Warehouse Data)</p>
+  </div>
+  <button class="upload-btn" onclick="event.stopPropagation(); document.getElementById('wrVhsFileInput').click()">Pilih File VHS</button>
+  <input type="file" id="wrVhsFileInput" accept=".xlsx,.xls,.xlsm,.xlsb,.csv,.ods" onchange="handleWrVhsFileUpload(event)">
+</div>
+<div id="wrVhsUploadStatus"></div>
 </div> <!-- end viewUpload -->
 
 <!-- ============ MASTER DATA VIEW ============ -->
@@ -1484,6 +1495,7 @@ function applyRoleUI() {
   const logoutBtn = document.getElementById('logoutBtn');
   const uploadBanner = document.getElementById('uploadBanner');
   const wrUploadBanner = document.getElementById('wrUploadBanner');
+  const wrVhsUploadBanner = document.getElementById('wrVhsUploadBanner');
   const avatarInitial = document.getElementById('avatarInitial');
   const avatarName = document.getElementById('avatarName');
   const avatarRole = document.getElementById('avatarRole');
@@ -1494,6 +1506,7 @@ function applyRoleUI() {
     logoutBtn.style.display = 'inline-block';
     uploadBanner.style.display = 'flex';
     wrUploadBanner.style.display = 'flex';
+    if (wrVhsUploadBanner) wrVhsUploadBanner.style.display = 'flex';
     if (avatarInitial) avatarInitial.textContent = 'A';
     if (avatarName) avatarName.textContent = 'Admin';
     if (avatarRole) avatarRole.textContent = 'Mode Admin';
@@ -1508,6 +1521,7 @@ function applyRoleUI() {
     logoutBtn.style.display = 'none';
     uploadBanner.style.display = 'none';
     wrUploadBanner.style.display = 'none';
+    if (wrVhsUploadBanner) wrVhsUploadBanner.style.display = 'none';
     if (avatarInitial) avatarInitial.textContent = 'V';
     if (avatarName) avatarName.textContent = 'Viewer';
     if (avatarRole) avatarRole.textContent = 'Mode Viewer';
@@ -2658,6 +2672,11 @@ wrBanner.addEventListener('dragover', e => { e.preventDefault(); wrBanner.classL
 wrBanner.addEventListener('dragleave', () => wrBanner.classList.remove('drag-over'));
 wrBanner.addEventListener('drop', e => { e.preventDefault(); wrBanner.classList.remove('drag-over'); const f=e.dataTransfer.files[0]; if(f) processWrFile(f); });
 
+const wrVhsBanner = document.getElementById('wrVhsUploadBanner');
+wrVhsBanner.addEventListener('dragover', e => { e.preventDefault(); wrVhsBanner.classList.add('drag-over'); });
+wrVhsBanner.addEventListener('dragleave', () => wrVhsBanner.classList.remove('drag-over'));
+wrVhsBanner.addEventListener('drop', e => { e.preventDefault(); wrVhsBanner.classList.remove('drag-over'); const f=e.dataTransfer.files[0]; if(f) processWrVhsFile(f); });
+
 function handleFileUpload(ev) {
   const f = ev.target.files[0];
   if (f) processFile(f);
@@ -2668,6 +2687,114 @@ function handleWrFileUpload(ev) {
   const f = ev.target.files[0];
   if (f) processWrFile(f);
   ev.target.value = '';
+}
+
+function handleWrVhsFileUpload(ev) {
+  const f = ev.target.files[0];
+  if (f) processWrVhsFile(f);
+  ev.target.value = '';
+}
+
+function processWrVhsFile(file) {
+  if (!isAdmin) {
+    const status = document.getElementById('wrVhsUploadStatus');
+    status.style.display = 'block'; status.style.color = '#ef4444';
+    status.textContent = '🔒 Hanya Admin yang bisa mengupload data. Silakan login terlebih dahulu.';
+    return;
+  }
+  const status = document.getElementById('wrVhsUploadStatus');
+  status.style.display = 'block'; status.style.color = '#22c55e';
+  status.textContent = '⏳ Membaca file Excel OS WR VHS...';
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, {defval:''});
+
+      if (!raw.length) { status.style.color='#ef4444'; status.textContent='⚠ File Excel kosong atau tidak terbaca.'; return; }
+
+      const normalize = s => String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+      const headerKeys = Object.keys(raw[0]);
+      const findCol = (...aliases) => {
+        const normAliases = aliases.map(normalize);
+        return headerKeys.find(h => normAliases.includes(normalize(h)));
+      };
+      const colDistrict   = findCol('District');
+      const colAuthsdDate = findCol('AUTHSD DATE','Authsd Date');
+      const colEquipNo    = findCol('EQUIP NO','Equip No');
+      const colWrNo       = findCol('WR NO','No WR');
+      const colWrItem     = findCol('WR ITEM','WR Item Number');
+      const colStockCode  = findCol('STOCK CODE','Stock Code');
+      const colItemName   = findCol('ITEM NAME','Item Name');
+      const colCurrClass  = findCol('CLASS','Current Class','CURRENT CLASS','Class Current');
+      const colMnemonic   = findCol('Mnemonic Current','MNEMONIC CURRENT');
+      const colPnCurrent  = findCol('PN Current','PN CURRENT');
+      const colWh         = findCol('WHOUSE ID','WH','Warehouse');
+      const colUoi        = findCol('UOI','UOM','Unit');
+      const colQtyReq     = findCol('QTY REQ','Qty Req');
+      const colSohWh      = findCol('SOH WH','SOH_WH','Soh Wh');
+
+      if (!colStockCode) {
+        status.style.color='#ef4444';
+        status.textContent = `⚠ Kolom Stock Code tidak ditemukan di file ini. Kolom yang terbaca: ${headerKeys.join(', ')}`;
+        return;
+      }
+      if (!colWh) {
+        status.style.color='#ef4444';
+        status.textContent = `⚠ Kolom Warehouse (WHOUSE ID) tidak ditemukan di file ini. Kolom yang terbaca: ${headerKeys.join(', ')}`;
+        return;
+      }
+
+      const parsed = raw.filter(r => String(r[colStockCode]||'').trim() !== '')
+        .map((r, idx) => ({
+          'ID': 'vhs-' + idx,
+          'DISTRICT': colDistrict ? String(r[colDistrict]||'').trim() : '',
+          'AUTHSD DATE': colAuthsdDate ? toIsoDate(parseDateFlexible(r[colAuthsdDate])) : '',
+          'EQUIP NO': colEquipNo ? String(r[colEquipNo]||'').trim() : '',
+          'WR NO': colWrNo ? String(r[colWrNo]||'').trim() : '',
+          'WR ITEM': colWrItem ? String(r[colWrItem]||'').trim() : '',
+          'STOCK CODE': String(r[colStockCode]||'').trim(),
+          'ITEM NAME': colItemName ? String(r[colItemName]||'') : '',
+          'CURRENT CLASS': colCurrClass ? String(r[colCurrClass]||'').trim() : '',
+          'MNEMONIC CURRENT': colMnemonic ? String(r[colMnemonic]||'').trim() : '',
+          'PN CURRENT': colPnCurrent ? String(r[colPnCurrent]||'').trim() : '',
+          'WH': String(r[colWh]||'').trim().toUpperCase(),
+          'UOI': colUoi ? String(r[colUoi]||'').trim() : '',
+          'QTY REQ': colQtyReq ? parseFloat(r[colQtyReq]||0) : 0,
+          'SOH WH': colSohWh ? parseFloat(r[colSohWh]||0) : 0,
+        }));
+      if (!parsed.length) { status.style.color='#ef4444'; status.textContent='⚠ Tidak ada baris dengan Stock Code terisi di file ini.'; return; }
+
+      // Hanya ambil baris yang warehouse-nya termasuk grup VHS; abaikan sisanya
+      const vhsRows = parsed.filter(r => VHS_CODES.includes(r['WH']));
+      const ignoredCount = parsed.length - vhsRows.length;
+      if (!vhsRows.length) {
+        status.style.color='#ef4444';
+        status.textContent = `⚠ Tidak ada baris dengan warehouse VHS (${VHS_CODES.join(', ')}) di file ini.`;
+        return;
+      }
+
+      // Ganti hanya data warehouse VHS di dalam rawWrData; data non-VHS (dari upload OS WR lain) tetap dipertahankan
+      rawWrData = rawWrData.filter(r => !VHS_CODES.includes(String(r['WH']||'').trim().toUpperCase())).concat(vhsRows);
+      wrData = filterByWarehouse(rawWrData, currentWarehouse);
+      buildWrIndex();
+      wrRemarkById = computeWrRemarks();
+      renderTable();
+      if (typeof applyWrFilters === 'function') applyWrFilters();
+
+      status.style.color='#22c55e';
+      status.textContent = `✅ ${vhsRows.length} baris OS WR VHS tersimpan dari file: ${file.name}${ignoredCount ? ` (${ignoredCount} baris di luar grup VHS diabaikan)` : ''}. Menyimpan ke database...`;
+      await saveWrToDb(rawWrData, file.name);
+      await saveWrDailySnapshot();
+      status.style.color='#22c55e';
+      status.textContent = `✅ ${vhsRows.length} baris OS WR VHS berhasil diupdate dari: ${file.name}${ignoredCount ? ` (${ignoredCount} baris di luar grup VHS diabaikan)` : ''}.`;
+    } catch (err) {
+      status.style.color='#ef4444';
+      status.textContent = '❌ Gagal membaca file: ' + err.message;
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 function processFile(file) {
